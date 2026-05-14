@@ -16,25 +16,28 @@
       align-items: center; min-height: 100vh;
     }
     
-    /* Idiomas */
-    .lang-container { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; max-width: 360px; }
+    /* Selector de Interface Dual */
+    .lang-container {
+      display: flex; gap: 10px; margin-bottom: 25px; width: 100%; max-width: 360px;
+    }
     .lang-btn {
-      flex: 1; padding: 12px; border-radius: 12px; border: 2px solid var(--border);
+      flex: 1; padding: 14px; border-radius: 12px; border: 2px solid var(--border);
       background: var(--bg-panel); color: var(--text-muted); cursor: pointer;
       font-weight: bold; font-size: 13px; transition: 0.2s;
     }
     .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(34, 197, 94, 0.1); }
 
-    /* Microfono Mobile-First */
+    /* Botón de Micrófono Ergonómico */
     #btnMic {
       width: 110px; height: 110px; border-radius: 50%; border: 4px solid var(--accent);
       background: var(--bg-panel); color: var(--accent); font-size: 50px;
-      margin-bottom: 20px; cursor: pointer; transition: 0.2s; outline: none;
+      margin-bottom: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none;
     }
     .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; box-shadow: 0 0 25px rgba(239, 68, 68, 0.5); }
 
     .label-ui { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
 
+    /* Buscador que se auto-limpia */
     input[type="tel"] {
       width: 100%; max-width: 360px; background-color: var(--bg-panel);
       border: 2px solid var(--border); color: var(--accent);
@@ -42,45 +45,42 @@
       border-radius: 15px; text-align: center; outline: none; margin-bottom: 20px;
     }
 
-    /* Tarjeta de Resultados */
     #listaResultados { width: 100%; max-width: 360px; }
     .card {
-      background-color: var(--bg-panel); border-radius: 20px;
-      border: 1px solid var(--border); padding: 30px; text-align: center;
-      animation: fadeIn 0.3s ease;
+      background-color: var(--bg-panel); border-radius: 20px; border: 1px solid var(--border); 
+      padding: 30px; text-align: center; animation: slideUp 0.2s ease;
     }
     .card-value { font-size: 90px; font-weight: 900; line-height: 1; margin: 10px 0; }
-    #status { font-size: 11px; color: var(--text-muted); margin-top: 20px; text-align: center; }
+    #status { font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center; }
 
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; } }
   </style>
 </head>
 <body>
 
   <div class="lang-container">
-    <button class="lang-btn active" onclick="setLang('en-US', this)">ENGLISH</button>
-    <button class="lang-btn" onclick="setLang('es-MX', this)">ESPAÑOL</button>
+    <button class="lang-btn active" id="btn-en" onclick="setLang('en-US', this)">ENGLISH</button>
+    <button class="lang-btn" id="btn-es" onclick="setLang('es-MX', this)">ESPAÑOL</button>
   </div>
 
   <button id="btnMic">🎤</button>
   
-  <div class="label-ui" id="ui-input-label">Enter last 4 digits</div>
+  <div class="label-ui" id="ui-label">Enter last 4 digits</div>
   <input type="tel" id="inputBusqueda" maxlength="4" placeholder="----" oninput="buscar()" onclick="resetUI()">
 
   <div id="listaResultados"></div>
-  <div id="status">Cargando datos...</div>
+  <div id="status">Syncing database...</div>
 
   <script>
-    // --- CAMBIA ESTO POR TU URL DE APPS SCRIPT ---
+    // URL DE TU PROPIO APPS SCRIPT
     const API_URL = "https://script.google.com/macros/s/AKfycbzJY1htCBjdSjmGISM705ehfzDbUV1OFpRrSEhgF8IqoD0dVk2vJVb6bYeUmsRuEjo9/exec";
     
     let db = [];
     let currentLang = 'en-US';
-    let vocesDisponibles = [];
     
     const translations = {
-      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', records: 'records' },
-      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', records: 'pallets' }
+      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', items: 'pallets' },
+      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', items: 'pallets' }
     };
 
     const input = document.getElementById("inputBusqueda");
@@ -88,52 +88,57 @@
     const status = document.getElementById("status");
     const btnMic = document.getElementById("btnMic");
 
-    // CARGA EN MEMORIA
+    // CARGA INICIAL EN MEMORIA
     window.onload = async () => {
-      cargarVoces();
       try {
         const resp = await fetch(API_URL);
         db = await resp.json();
         updateStatus();
       } catch (e) {
-        status.innerText = "ERROR DE CONEXIÓN";
+        status.innerText = "CONNECTION ERROR";
       }
     };
 
-    // CONFIGURACIÓN DE VOZ
-    function cargarVoces() { vocesDisponibles = window.speechSynthesis.getVoices(); }
-    window.speechSynthesis.onvoiceschanged = cargarVoces;
-
+    // RECONOCIMIENTO DE VOZ
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.lang = 'es-ES';
+    recognition.lang = 'en-US'; // Default
 
-    recognition.onstart = () => { btnMic.classList.add('mic-active'); hablar(""); };
+    recognition.onstart = () => { btnMic.classList.add('mic-active'); precalentarVoz(); };
     recognition.onend = () => btnMic.classList.remove('mic-active');
+    
     recognition.onresult = (e) => {
-      const num = e.results[0][0].transcript.replace(/\D/g, "").slice(-4);
-      if (num) { input.value = num; buscar(); }
+      const texto = e.results[0][0].transcript;
+      const num = texto.replace(/\D/g, "").slice(-4);
+      if (num) { 
+        input.value = num; 
+        buscar(); 
+      }
     };
 
-    function updateStatus() {
-      const t = translations[currentLang];
-      status.innerText = t.ready + db.length + " " + t.records;
+    function precalentarVoz() {
+      const dummy = new SpeechSynthesisUtterance("");
+      window.speechSynthesis.speak(dummy);
     }
 
     function setLang(lang, btn) {
       currentLang = lang;
+      recognition.lang = lang; // EL MICRO ESCUCHA EN EL IDIOMA SELECCIONADO
       document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('ui-input-label').innerText = translations[currentLang].label;
+      document.getElementById('ui-label').innerText = translations[currentLang].label;
       updateStatus();
       resetUI();
-      hablar(""); 
+    }
+
+    function updateStatus() {
+      status.innerText = translations[currentLang].ready + db.length + " " + translations[currentLang].items;
     }
 
     function resetUI() {
       input.value = '';
       lista.innerHTML = '';
-      hablar("");
+      precalentarVoz();
     }
 
     function buscar() {
@@ -141,24 +146,20 @@
       const t = translations[currentLang];
       
       if (val.length === 4) {
-        // BÚSQUEDA INSTANTÁNEA EN MEMORIA
+        // BÚSQUEDA INSTANTÁNEA
         const item = db.find(row => row.full.endsWith(val));
         lista.innerHTML = "";
         
         if (item) {
           lista.innerHTML = `
             <div class="card">
-              <div style="color: var(--text-muted); font-size: 14px; margin-bottom: 5px;">${item.full} (${item.cant})</div>
+              <div style="color: var(--text-muted); font-size: 13px;">${item.full} (${item.cant})</div>
               <div class="card-value">${item.val}</div>
             </div>`;
-          
           hablar(item.val); 
           input.blur();
         } else {
-          lista.innerHTML = `
-            <div class="card" style="border-color: #ef4444;">
-              <div class="card-value" style="color: #ef4444; font-size: 35px;">${t.notFound}</div>
-            </div>`;
+          lista.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-value" style="color:#ef4444; font-size:35px;">${t.notFound}</div></div>`;
           hablar(t.notFound);
         }
       }
@@ -167,22 +168,16 @@
     function hablar(mensaje) {
       window.speechSynthesis.cancel();
       const msg = new SpeechSynthesisUtterance(mensaje);
-      msg.lang = currentLang;
-      
-      if (vocesDisponibles.length > 0) {
-        const vozM = vocesDisponibles.find(v => 
-          v.lang.startsWith(currentLang.split('-')[0]) && 
-          (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('hombre'))
-        );
-        if (vozM) msg.voice = vozM;
-      }
-
-      msg.rate = 0.9;
+      msg.lang = currentLang; // LA VOZ HABLA EN EL IDIOMA SELECCIONADO
       msg.pitch = 0.8;
+      msg.rate = 1.0;
       setTimeout(() => window.speechSynthesis.speak(msg), 50);
     }
 
-    btnMic.onclick = () => { hablar(""); try { recognition.start(); } catch(e) { recognition.stop(); } };
+    btnMic.onclick = () => { 
+      precalentarVoz(); 
+      try { recognition.start(); } catch(e) { recognition.stop(); } 
+    };
   </script>
 </body>
 </html>

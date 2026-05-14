@@ -9,20 +9,19 @@
     body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; min-height: 100vh; }
     
     .lang-container { display: flex; gap: 8px; margin-bottom: 20px; width: 100%; max-width: 360px; }
-    .lang-btn { flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel); color: var(--muted); font-size: 12px; font-weight: bold; }
+    .lang-btn { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel); color: var(--muted); font-size: 13px; font-weight: bold; }
     .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(34, 197, 94, 0.1); }
 
-    /* Diseño Mobile-First: Micro arriba */
     .mic-section { margin-bottom: 20px; }
     #btnMic { 
-      width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--accent); 
-      background: var(--panel); color: var(--accent); font-size: 45px; 
-      display: flex; align-items: center; justify-content: center; transition: 0.2s;
+      width: 110px; height: 110px; border-radius: 50%; border: 4px solid var(--accent); 
+      background: var(--panel); color: var(--accent); font-size: 50px; 
+      display: flex; align-items: center; justify-content: center; transition: 0.2s; outline: none;
     }
-    .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; transform: scale(1.1); box-shadow: 0 0 25px rgba(239, 68, 68, 0.4); }
+    .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; box-shadow: 0 0 25px rgba(239, 68, 68, 0.5); }
 
     .search-section { width: 100%; max-width: 360px; text-align: center; }
-    .label-ui { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .label-ui { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
     
     input[type="tel"] { 
       width: 100%; background: var(--panel); border: 2px solid var(--border); 
@@ -55,7 +54,7 @@
   </div>
   
   <div id="resultado">
-    <div class="status-text" id="status" style="text-align: center;">Ready to scan</div>
+    <div class="status-text" id="status" style="text-align: center;">Ready</div>
   </div>
 
   <script>
@@ -69,30 +68,37 @@
     const recognition = new SpeechRecognition();
     recognition.lang = 'es-ES';
 
-    recognition.onstart = () => { btnMic.classList.add('mic-active'); hablar(""); };
+    recognition.onstart = () => { btnMic.classList.add('mic-active'); precalentarVoz(); };
     recognition.onend = () => btnMic.classList.remove('mic-active');
     recognition.onresult = (e) => {
         const num = e.results[0][0].transcript.replace(/\D/g, "").slice(-4);
         if (num) { input.value = num; ejecutarBusqueda(num); }
     };
 
+    function precalentarVoz() {
+      // Truco: Soltar un mensaje vacío para que el navegador desbloquee el canal
+      const dummy = new SpeechSynthesisUtterance("");
+      window.speechSynthesis.speak(dummy);
+    }
+
     function setLang(l, b) {
       currentLang = l;
       document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
       b.classList.add('active');
       document.getElementById('ui-label').innerText = l === 'es-MX' ? 'Digitar 4 últimos' : 'Enter 4 digits';
+      precalentarVoz(); // Desbloquea al cambiar idioma
     }
 
     function checkInput() { if (input.value.length === 4) ejecutarBusqueda(input.value); }
 
-    // Función para borrar al hacer click
     function resetSearch() {
       input.value = '';
       resDiv.innerHTML = '<div class="status-text" style="text-align: center;">Ready</div>';
+      precalentarVoz(); // Desbloquea al tocar el input
     }
 
     async function ejecutarBusqueda(num) {
-      resDiv.innerHTML = `<div class="status-text" style="text-align:center;">Searching ${num}...</div>`;
+      resDiv.innerHTML = `<div class="status-text" style="text-align:center;">Searching...</div>`;
       try {
         const response = await fetch(`${API_URL}?p=${num}`);
         const data = await response.json();
@@ -109,18 +115,29 @@
           resDiv.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-val" style="color:#ef4444; font-size:35px">${currentLang === 'es-MX' ? 'NO HAY' : 'NOT FOUND'}</div></div>`;
           hablar(currentLang === 'es-MX' ? "No hay" : "Not found");
         }
-      } catch (e) { resDiv.innerHTML = `<div class="status-text" style="color:red; text-align:center;">Connection Error</div>`; }
+      } catch (e) { resDiv.innerHTML = `<div class="status-text" style="color:red; text-align:center;">Error</div>`; }
     }
 
     function hablar(m) {
+      // Cancelar cualquier proceso previo para evitar bloqueos
       window.speechSynthesis.cancel();
+      
       const u = new SpeechSynthesisUtterance(m);
       u.lang = currentLang;
       u.pitch = 0.8;
-      window.speechSynthesis.speak(u);
+      u.rate = 1.0;
+      u.volume = 1.0;
+
+      // Un pequeño retraso ayuda a que Chrome en Android no ignore la orden
+      setTimeout(() => {
+        window.speechSynthesis.speak(u);
+      }, 50);
     }
 
-    btnMic.onclick = () => { hablar(" "); try { recognition.start(); } catch(e) { recognition.stop(); } };
+    btnMic.onclick = () => { 
+      precalentarVoz(); 
+      try { recognition.start(); } catch(e) { recognition.stop(); } 
+    };
   </script>
 </body>
 </html>

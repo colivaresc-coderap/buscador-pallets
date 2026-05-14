@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <style>
+    :root { --bg: #09090b; --panel: #18181b; --accent: #22c55e; --text: #fafafa; --muted: #a1a1aa; --border: #27272a; }
+    body { font-family: system-ui; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; min-height: 100vh; }
+    .lang-container { display: flex; gap: 10px; margin-bottom: 20px; width: 100%; max-width: 350px; }
+    .lang-btn { flex: 1; padding: 12px; border-radius: 12px; border: 2px solid var(--border); background: var(--panel); color: var(--muted); cursor: pointer; font-weight: bold; }
+    .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(34, 197, 94, 0.1); }
+    .search-area { width: 100%; max-width: 350px; display: flex; gap: 10px; margin-bottom: 20px; }
+    input[type="tel"] { flex: 1; background: var(--panel); border: 2px solid var(--border); color: var(--accent); font-size: 40px; font-weight: 800; padding: 10px; border-radius: 15px; text-align: center; outline: none; }
+    #btnMic { width: 75px; height: 75px; border-radius: 50%; border: 4px solid var(--accent); background: var(--panel); color: var(--accent); font-size: 30px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none; }
+    .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
+    #resultado { width: 100%; max-width: 350px; text-align: center; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 30px; animation: slideUp 0.3s ease; }
+    .card-val { font-size: 80px; font-weight: 900; line-height: 1; margin: 10px 0; }
+    .status-text { font-size: 12px; color: var(--muted); text-transform: uppercase; margin-top: 10px; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <div class="lang-container">
+    <button class="lang-btn active" id="btn-en" onclick="setLang('en-US', this)">ENGLISH</button>
+    <button class="lang-btn" onclick="setLang('es-MX', this)">ESPAÑOL</button>
+  </div>
+
+  <div class="search-area">
+    <input type="tel" id="inputNum" maxlength="4" placeholder="----" oninput="checkInput()">
+    <button id="btnMic">🎤</button>
+  </div>
+  
+  <div id="resultado"><div class="status-text" id="status">Listo para buscar</div></div>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzJY1htCBjdSjmGISM705ehfzDbUV1OFpRrSEhgF8IqoD0dVk2vJVb6bYeUmsRuEjo9/exec";
+    let currentLang = 'en-US';
+    const input = document.getElementById('inputNum');
+    const btnMic = document.getElementById('btnMic');
+    const resDiv = document.getElementById('resultado');
+
+    const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-ES';
+
+    recognition.onstart = () => { 
+      btnMic.classList.add('mic-active');
+      // TRUCO: Al empezar a escuchar, soltamos un audio vacío para "despertar" el canal
+      hablar(""); 
+    };
+    recognition.onend = () => btnMic.classList.remove('mic-active');
+    recognition.onresult = (e) => {
+        const num = e.results[0][0].transcript.replace(/\D/g, "").slice(-4);
+        if (num) { input.value = num; ejecutarBusqueda(num); }
+    };
+
+    function setLang(l, b) {
+      currentLang = l;
+      document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+      b.classList.add('active');
+    }
+
+    function checkInput() { if (input.value.length === 4) ejecutarBusqueda(input.value); }
+
+    async function ejecutarBusqueda(num) {
+      resDiv.innerHTML = `<div class="status-text">Buscando ${num}...</div>`;
+      try {
+        const response = await fetch(`${API_URL}?p=${num}`);
+        const data = await response.json();
+        if (data.encontrado) {
+          resDiv.innerHTML = `
+            <div class="card">
+              <div style="color:var(--muted); font-size:14px">${data.full} (${data.cant})</div>
+              <div class="card-val">${data.val}</div>
+              <div class="status-text">${currentLang === 'es-MX' ? 'LOCALIZADO' : 'LOCATED'}</div>
+            </div>`;
+          hablar(data.val);
+        } else {
+          resDiv.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-val" style="color:#ef4444; font-size:35px">${currentLang === 'es-MX' ? 'NO HAY' : 'NOT FOUND'}</div></div>`;
+          hablar(currentLang === 'es-MX' ? "No hay" : "Not found");
+        }
+      } catch (e) { resDiv.innerHTML = `<div class="status-text" style="color:red">Error de conexión</div>`; }
+    }
+
+    // FUNCIÓN DE VOZ REFORZADA
+    function hablar(mensaje) {
+      // 1. Limpiamos cualquier voz en curso
+      window.speechSynthesis.cancel();
+      
+      const u = new SpeechSynthesisUtterance(mensaje);
+      u.lang = currentLang;
+      u.pitch = 0.8;
+      u.rate = 1.0;
+      u.volume = 1.0;
+
+      // 2. Pequeño fix para Chrome en Android: re-inicializar el objeto
+      const synth = window.speechSynthesis;
+      synth.speak(u);
+
+      // 3. LOG para depuración en consola
+      console.log("Intentando hablar: " + mensaje);
+    }
+
+    btnMic.onclick = () => { 
+      // Activar el motor de audio con un toque físico
+      hablar(" "); 
+      try { recognition.start(); } catch(e) { recognition.stop(); } 
+    };
+  </script>
+</body>
+</html>

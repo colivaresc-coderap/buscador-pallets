@@ -13,28 +13,18 @@
     .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(34, 197, 94, 0.1); }
 
     .mic-section { margin-bottom: 20px; }
-    #btnMic { 
-      width: 110px; height: 110px; border-radius: 50%; border: 4px solid var(--accent); 
-      background: var(--panel); color: var(--accent); font-size: 50px; 
-      display: flex; align-items: center; justify-content: center; transition: 0.2s; outline: none;
-    }
+    #btnMic { width: 110px; height: 110px; border-radius: 50%; border: 4px solid var(--accent); background: var(--panel); color: var(--accent); font-size: 50px; display: flex; align-items: center; justify-content: center; transition: 0.2s; outline: none; }
     .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; box-shadow: 0 0 25px rgba(239, 68, 68, 0.5); }
 
     .search-section { width: 100%; max-width: 360px; text-align: center; }
     .label-ui { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-    
-    input[type="tel"] { 
-      width: 100%; background: var(--panel); border: 2px solid var(--border); 
-      color: var(--accent); font-size: 50px; font-weight: 800; padding: 12px; 
-      border-radius: 15px; text-align: center; outline: none; 
-    }
+    input[type="tel"] { width: 100%; background: var(--panel); border: 2px solid var(--border); color: var(--accent); font-size: 50px; font-weight: 800; padding: 12px; border-radius: 15px; text-align: center; outline: none; }
 
     #resultado { width: 100%; max-width: 360px; margin-top: 20px; }
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 25px; text-align: center; animation: slideUp 0.3s ease; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 25px; text-align: center; animation: slideUp 0.2s ease; }
     .card-val { font-size: 85px; font-weight: 900; line-height: 1; margin: 10px 0; }
     .status-text { font-size: 11px; color: var(--muted); text-transform: uppercase; margin-top: 10px; }
-
-    @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
   </style>
 </head>
 <body>
@@ -54,15 +44,29 @@
   </div>
   
   <div id="resultado">
-    <div class="status-text" id="status" style="text-align: center;">Ready</div>
+    <div class="status-text" id="status" style="text-align: center;">Cargando base de datos...</div>
   </div>
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbzJY1htCBjdSjmGISM705ehfzDbUV1OFpRrSEhgF8IqoD0dVk2vJVb6bYeUmsRuEjo9/exec";
+    
+    let db = []; // AQUÍ SE GUARDA TODO EN MEMORIA
     let currentLang = 'en-US';
     const input = document.getElementById('inputNum');
     const btnMic = document.getElementById('btnMic');
     const resDiv = document.getElementById('resultado');
+    const status = document.getElementById('status');
+
+    // 1. CARGA INICIAL (Solo ocurre una vez al abrir la página)
+    window.onload = async () => {
+      try {
+        const resp = await fetch(API_URL);
+        db = await resp.json();
+        status.innerText = "SISTEMA READY: " + db.length + " PALLETS";
+      } catch (e) {
+        status.innerText = "ERROR AL CARGAR DATOS";
+      }
+    };
 
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     const recognition = new SpeechRecognition();
@@ -72,11 +76,10 @@
     recognition.onend = () => btnMic.classList.remove('mic-active');
     recognition.onresult = (e) => {
         const num = e.results[0][0].transcript.replace(/\D/g, "").slice(-4);
-        if (num) { input.value = num; ejecutarBusqueda(num); }
+        if (num) { input.value = num; buscarLocalmente(num); }
     };
 
     function precalentarVoz() {
-      // Truco: Soltar un mensaje vacío para que el navegador desbloquee el canal
       const dummy = new SpeechSynthesisUtterance("");
       window.speechSynthesis.speak(dummy);
     }
@@ -86,58 +89,47 @@
       document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
       b.classList.add('active');
       document.getElementById('ui-label').innerText = l === 'es-MX' ? 'Digitar 4 últimos' : 'Enter 4 digits';
-      precalentarVoz(); // Desbloquea al cambiar idioma
+      precalentarVoz();
     }
 
-    function checkInput() { if (input.value.length === 4) ejecutarBusqueda(input.value); }
+    function checkInput() { if (input.value.length === 4) buscarLocalmente(input.value); }
 
     function resetSearch() {
       input.value = '';
       resDiv.innerHTML = '<div class="status-text" style="text-align: center;">Ready</div>';
-      precalentarVoz(); // Desbloquea al tocar el input
+      precalentarVoz();
     }
 
-    async function ejecutarBusqueda(num) {
-      resDiv.innerHTML = `<div class="status-text" style="text-align:center;">Searching...</div>`;
-      try {
-        const response = await fetch(`${API_URL}?p=${num}`);
-        const data = await response.json();
-        if (data.encontrado) {
-          resDiv.innerHTML = `
-            <div class="card">
-              <div style="color:var(--muted); font-size:13px">${data.full} (${data.cant})</div>
-              <div class="card-val">${data.val}</div>
-              <div class="status-text">${currentLang === 'es-MX' ? 'LOCALIZADO' : 'LOCATED'}</div>
-            </div>`;
-          hablar(data.val);
-          input.blur();
-        } else {
-          resDiv.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-val" style="color:#ef4444; font-size:35px">${currentLang === 'es-MX' ? 'NO HAY' : 'NOT FOUND'}</div></div>`;
-          hablar(currentLang === 'es-MX' ? "No hay" : "Not found");
-        }
-      } catch (e) { resDiv.innerHTML = `<div class="status-text" style="color:red; text-align:center;">Error</div>`; }
+    // 2. BÚSQUEDA INSTANTÁNEA (En memoria)
+    function buscarLocalmente(num) {
+      // Buscamos en la variable 'db' que ya tiene todo
+      const encontrado = db.find(item => item.id.endsWith(num));
+      
+      if (encontrado) {
+        resDiv.innerHTML = `
+          <div class="card">
+            <div style="color:var(--muted); font-size:13px">${encontrado.id} (${encontrado.cant})</div>
+            <div class="card-val">${encontrado.val}</div>
+            <div class="status-text">${currentLang === 'es-MX' ? 'LOCALIZADO' : 'LOCATED'}</div>
+          </div>`;
+        hablar(encontrado.val);
+        input.blur();
+      } else {
+        resDiv.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-val" style="color:#ef4444; font-size:35px">${currentLang === 'es-MX' ? 'NO HAY' : 'NOT FOUND'}</div></div>`;
+        hablar(currentLang === 'es-MX' ? "No hay" : "Not found");
+      }
     }
 
     function hablar(m) {
-      // Cancelar cualquier proceso previo para evitar bloqueos
       window.speechSynthesis.cancel();
-      
       const u = new SpeechSynthesisUtterance(m);
       u.lang = currentLang;
       u.pitch = 0.8;
-      u.rate = 1.0;
       u.volume = 1.0;
-
-      // Un pequeño retraso ayuda a que Chrome en Android no ignore la orden
-      setTimeout(() => {
-        window.speechSynthesis.speak(u);
-      }, 50);
+      setTimeout(() => window.speechSynthesis.speak(u), 50);
     }
 
-    btnMic.onclick = () => { 
-      precalentarVoz(); 
-      try { recognition.start(); } catch(e) { recognition.stop(); } 
-    };
+    btnMic.onclick = () => { precalentarVoz(); try { recognition.start(); } catch(e) { recognition.stop(); } };
   </script>
 </body>
 </html>

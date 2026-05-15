@@ -16,10 +16,7 @@
       align-items: center; min-height: 100vh;
     }
     
-    /* Selector de Interface Dual */
-    .lang-container {
-      display: flex; gap: 10px; margin-bottom: 25px; width: 100%; max-width: 360px;
-    }
+    .lang-container { display: flex; gap: 10px; margin-bottom: 25px; width: 100%; max-width: 360px; }
     .lang-btn {
       flex: 1; padding: 14px; border-radius: 12px; border: 2px solid var(--border);
       background: var(--bg-panel); color: var(--text-muted); cursor: pointer;
@@ -27,17 +24,15 @@
     }
     .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(34, 197, 94, 0.1); }
 
-    /* Botón de Micrófono Ergonómico */
     #btnMic {
-      width: 110px; height: 110px; border-radius: 50%; border: 4px solid var(--accent);
-      background: var(--bg-panel); color: var(--accent); font-size: 50px;
+      width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--accent);
+      background: var(--bg-panel); color: var(--accent); font-size: 45px;
       margin-bottom: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none;
     }
     .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; box-shadow: 0 0 25px rgba(239, 68, 68, 0.5); }
 
     .label-ui { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
 
-    /* Buscador que se auto-limpia */
     input[type="tel"] {
       width: 100%; max-width: 360px; background-color: var(--bg-panel);
       border: 2px solid var(--border); color: var(--accent);
@@ -45,15 +40,15 @@
       border-radius: 15px; text-align: center; outline: none; margin-bottom: 20px;
     }
 
-    #listaResultados { width: 100%; max-width: 360px; }
+    #listaResultados { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 15px; }
     .card {
       background-color: var(--bg-panel); border-radius: 20px; border: 1px solid var(--border); 
-      padding: 30px; text-align: center; animation: slideUp 0.2s ease;
+      padding: 25px; text-align: center; animation: slideUp 0.2s ease;
     }
-    .card-value { font-size: 90px; font-weight: 900; line-height: 1; margin: 10px 0; }
+    .card-value { font-size: 80px; font-weight: 900; line-height: 1; margin: 10px 0; }
     #status { font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center; }
 
-    @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
   </style>
 </head>
 <body>
@@ -72,15 +67,14 @@
   <div id="status">Syncing database...</div>
 
   <script>
-    // URL DE TU PROPIO APPS SCRIPT
     const API_URL = "https://script.google.com/macros/s/AKfycbzJY1htCBjdSjmGISM705ehfzDbUV1OFpRrSEhgF8IqoD0dVk2vJVb6bYeUmsRuEjo9/exec";
     
     let db = [];
     let currentLang = 'en-US';
     
     const translations = {
-      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', items: 'pallets' },
-      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', items: 'pallets' }
+      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', items: 'pallets', multiple: 'Multiple found!' },
+      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', items: 'pallets', multiple: '¡Varios encontrados!' }
     };
 
     const input = document.getElementById("inputBusqueda");
@@ -88,21 +82,17 @@
     const status = document.getElementById("status");
     const btnMic = document.getElementById("btnMic");
 
-    // CARGA INICIAL EN MEMORIA
     window.onload = async () => {
       try {
         const resp = await fetch(API_URL);
         db = await resp.json();
         updateStatus();
-      } catch (e) {
-        status.innerText = "CONNECTION ERROR";
-      }
+      } catch (e) { status.innerText = "CONNECTION ERROR"; }
     };
 
-    // RECONOCIMIENTO DE VOZ
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US'; // Default
+    recognition.lang = 'en-US';
 
     recognition.onstart = () => { btnMic.classList.add('mic-active'); precalentarVoz(); };
     recognition.onend = () => btnMic.classList.remove('mic-active');
@@ -110,10 +100,7 @@
     recognition.onresult = (e) => {
       const texto = e.results[0][0].transcript;
       const num = texto.replace(/\D/g, "").slice(-4);
-      if (num) { 
-        input.value = num; 
-        buscar(); 
-      }
+      if (num) { input.value = num; buscar(); }
     };
 
     function precalentarVoz() {
@@ -123,7 +110,7 @@
 
     function setLang(lang, btn) {
       currentLang = lang;
-      recognition.lang = lang; // EL MICRO ESCUCHA EN EL IDIOMA SELECCIONADO
+      recognition.lang = lang;
       document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('ui-label').innerText = translations[currentLang].label;
@@ -146,20 +133,28 @@
       const t = translations[currentLang];
       
       if (val.length === 4) {
-        // BÚSQUEDA INSTANTÁNEA
-        const item = db.find(row => row.full.endsWith(val));
+        // LA CLAVE: Usamos filter en lugar de find para traer todos los repetidos
+        const coincidencias = db.filter(row => row.full.endsWith(val));
         lista.innerHTML = "";
         
-        if (item) {
-          lista.innerHTML = `
-            <div class="card">
-              <div style="color: var(--text-muted); font-size: 13px;">${item.full} (${item.cant})</div>
-              <div class="card-value">${item.val}</div>
-            </div>`;
-          hablar(item.val); 
+        if (coincidencias.length > 0) {
+          coincidencias.forEach(item => {
+            lista.innerHTML += `
+              <div class="card">
+                <div style="color: var(--text-muted); font-size: 13px;">${item.full} (${item.cant})</div>
+                <div class="card-value">${item.val}</div>
+              </div>`;
+          });
+          
+          // Si hay más de uno, avisamos por voz que hay varios
+          if (coincidencias.length > 1) {
+            hablar(t.multiple);
+          } else {
+            hablar(coincidencias[0].val); 
+          }
           input.blur();
         } else {
-          lista.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-value" style="color:#ef4444; font-size:35px;">${t.notFound}</div></div>`;
+          lista.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-value" style="color:#ef4444; font-size:30px;">${t.notFound}</div></div>`;
           hablar(t.notFound);
         }
       }
@@ -168,7 +163,7 @@
     function hablar(mensaje) {
       window.speechSynthesis.cancel();
       const msg = new SpeechSynthesisUtterance(mensaje);
-      msg.lang = currentLang; // LA VOZ HABLA EN EL IDIOMA SELECCIONADO
+      msg.lang = currentLang;
       msg.pitch = 0.8;
       msg.rate = 1.0;
       setTimeout(() => window.speechSynthesis.speak(msg), 50);

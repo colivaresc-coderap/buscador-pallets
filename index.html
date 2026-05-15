@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Buscador Pro CS - WalkieTalkie</title>
+  <title>Buscador Pro CS - Silent Mode</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -25,7 +25,6 @@
     }
     .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(34, 197, 94, 0.1); }
 
-    /* Switch de Modo Continuo */
     .mode-container {
       display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
       background: var(--bg-panel); padding: 8px 15px; border-radius: 20px; border: 1px solid var(--border);
@@ -60,7 +59,6 @@
     #listaResultados { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
     .card { background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); padding: 20px; text-align: center; }
     
-    /* Colores Duplicados */
     .color-0 { border-color: var(--accent); } 
     .color-1 { border-color: #facc15; color: #facc15; } 
     .color-2 { border-color: #3b82f6; color: #3b82f6; } 
@@ -69,14 +67,12 @@
     .card-value { font-size: 80px; font-weight: 900; line-height: 1; margin: 5px 0; }
     .extra-field { font-size: 22px; font-weight: bold; opacity: 0.9; }
     #status { font-size: 10px; color: var(--text-muted); margin-top: 15px; }
-
-    /* Botón Sensor iOS */
     #btnSensor { display: none; background: #3b82f6; color: white; border: none; padding: 8px; border-radius: 8px; font-size: 10px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
 
-  <button id="btnSensor">ACTIVATE MOTION SENSOR</button>
+  <button id="btnSensor">ACTIVATE SENSOR</button>
 
   <div class="lang-container">
     <button class="lang-btn active" id="btn-en" onclick="setLang('en-US', this)">ENGLISH</button>
@@ -128,8 +124,8 @@
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
+    recognition.interimResults = false;
 
-    // CONFIGURACIÓN MODO CONTINUO
     checkContinuous.onchange = (e) => {
       isContinuous = e.target.checked;
       if (isContinuous) {
@@ -141,21 +137,22 @@
       }
     };
 
-    recognition.onstart = () => { btnMic.classList.add('mic-active'); precalentarVoz(); };
+    recognition.onstart = () => { btnMic.classList.add('mic-active'); };
+    
     recognition.onend = () => { 
       btnMic.classList.remove('mic-active'); 
-      if (isContinuous) recognition.start(); // Reinicia si está en modo auto
+      if (isContinuous) {
+        // En modo continuo, intentamos reiniciar solo si fue cerrado por el sistema
+        setTimeout(() => { if (isContinuous) recognition.start(); }, 10);
+      }
     };
     
     recognition.onresult = (e) => {
-      const resultIndex = e.resultIndex;
+      // En modo continuo, los resultados pueden venir en diferentes índices
+      const resultIndex = e.results.length - 1;
       const textoRaw = e.results[resultIndex][0].transcript.toUpperCase();
       
-      // --- FILTRO DE SEGURIDAD AGA / AGX ---
-      if (textoRaw.includes("AGA") || textoRaw.includes("AGX")) {
-        console.log("Filtro activado: Código interno ignorado.");
-        return;
-      }
+      if (textoRaw.includes("AGA") || textoRaw.includes("AGX")) return;
 
       const num = textoRaw.replace(/\D/g, "").slice(-4);
       if (num && num.length === 4) { 
@@ -165,11 +162,11 @@
     };
 
     function activarMicrofono() {
-      precalentarVoz(); 
+      // Solo precalentamos si NO es modo continuo para evitar ruidos de buffer
+      if(!isContinuous) window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
       try { recognition.start(); } catch(e) {}
     }
 
-    // SHAKE & KEYBOARD
     function initShake() {
       if (typeof DeviceMotionEvent.requestPermission === 'function') {
         document.getElementById("btnSensor").style.display = "block";
@@ -191,8 +188,6 @@
 
     document.addEventListener('keydown', (e) => { if (e.key === "F4") { e.preventDefault(); activarMicrofono(); }});
 
-    function precalentarVoz() { window.speechSynthesis.speak(new SpeechSynthesisUtterance("")); }
-
     function setLang(lang, btn) {
       currentLang = lang;
       recognition.lang = lang;
@@ -202,12 +197,14 @@
       resetUI();
     }
 
-    function resetUI() { input.value = ''; lista.innerHTML = ''; precalentarVoz(); }
+    function resetUI() { 
+      input.value = ''; 
+      lista.innerHTML = ''; 
+    }
 
     function buscar() {
       const val = input.value;
       if (val.length === 4) {
-        if (!isContinuous) btnMic.classList.remove('mic-active');
         const coincidencias = db.filter(row => row.full.endsWith(val));
         lista.innerHTML = "";
         
@@ -233,7 +230,8 @@
       const msg = new SpeechSynthesisUtterance(m);
       msg.lang = currentLang;
       msg.pitch = 0.8;
-      setTimeout(() => window.speechSynthesis.speak(msg), 50);
+      // No silenciamos el micrófono para hablar, así evitamos el ciclo de "cerrar/abrir"
+      window.speechSynthesis.speak(msg);
     }
 
     btnMic.onclick = activarMicrofono;

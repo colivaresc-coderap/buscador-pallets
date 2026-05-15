@@ -31,8 +31,6 @@
     }
     .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; box-shadow: 0 0 25px rgba(239, 68, 68, 0.5); }
 
-    .label-ui { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
-
     input[type="tel"] {
       width: 100%; max-width: 360px; background-color: var(--bg-panel);
       border: 2px solid var(--border); color: var(--accent);
@@ -41,11 +39,19 @@
     }
 
     #listaResultados { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 15px; }
+    
     .card {
-      background-color: var(--bg-panel); border-radius: 20px; border: 1px solid var(--border); 
+      background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); 
       padding: 25px; text-align: center; animation: slideUp 0.2s ease;
     }
-    .card-value { font-size: 80px; font-weight: 900; line-height: 1; margin: 10px 0; }
+    /* COLORES PARA DUPLICADOS */
+    .color-0 { border-color: var(--border); } /* Original */
+    .color-1 { border-color: #facc15; color: #facc15; } /* Amarillo */
+    .color-2 { border-color: #3b82f6; color: #3b82f6; } /* Azul */
+    .color-3 { border-color: #ef4444; color: #ef4444; } /* Rojo */
+
+    .card-value { font-size: 80px; font-weight: 900; line-height: 1; margin: 5px 0; }
+    .extra-field { font-size: 22px; font-weight: bold; margin-top: 5px; opacity: 0.9; }
     #status { font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center; }
 
     @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
@@ -60,7 +66,6 @@
 
   <button id="btnMic">🎤</button>
   
-  <div class="label-ui" id="ui-label">Enter last 4 digits</div>
   <input type="tel" id="inputBusqueda" maxlength="4" placeholder="----" oninput="buscar()" onclick="resetUI()">
 
   <div id="listaResultados"></div>
@@ -73,8 +78,8 @@
     let currentLang = 'en-US';
     
     const translations = {
-      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', items: 'pallets', multiple: 'Multiple found!' },
-      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', items: 'pallets', multiple: '¡Varios encontrados!' }
+      'en-US': { ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple found!' },
+      'es-MX': { ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios encontrados!' }
     };
 
     const input = document.getElementById("inputBusqueda");
@@ -95,67 +100,52 @@
     recognition.lang = 'en-US';
 
     recognition.onstart = () => { btnMic.classList.add('mic-active'); precalentarVoz(); };
-    recognition.onend = () => btnMic.classList.remove('mic-active');
-    
     recognition.onresult = (e) => {
       const texto = e.results[0][0].transcript;
       const num = texto.replace(/\D/g, "").slice(-4);
       if (num) { input.value = num; buscar(); }
     };
 
-    function precalentarVoz() {
-      const dummy = new SpeechSynthesisUtterance("");
-      window.speechSynthesis.speak(dummy);
-    }
+    function precalentarVoz() { window.speechSynthesis.speak(new SpeechSynthesisUtterance("")); }
 
     function setLang(lang, btn) {
       currentLang = lang;
       recognition.lang = lang;
       document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('ui-label').innerText = translations[currentLang].label;
       updateStatus();
       resetUI();
     }
 
-    function updateStatus() {
-      status.innerText = translations[currentLang].ready + db.length + " " + translations[currentLang].items;
-    }
+    function updateStatus() { status.innerText = translations[currentLang].ready + db.length + " pallets"; }
 
-    function resetUI() {
-      input.value = '';
-      lista.innerHTML = '';
-      precalentarVoz();
-    }
+    function resetUI() { input.value = ''; lista.innerHTML = ''; precalentarVoz(); }
 
     function buscar() {
       const val = input.value;
-      const t = translations[currentLang];
-      
       if (val.length === 4) {
-        // LA CLAVE: Usamos filter en lugar de find para traer todos los repetidos
         const coincidencias = db.filter(row => row.full.endsWith(val));
         lista.innerHTML = "";
         
         if (coincidencias.length > 0) {
-          coincidencias.forEach(item => {
+          coincidencias.forEach((item, index) => {
+            // El color depende del índice (0, 1, 2 o 3)
+            const colorClass = `color-${index % 4}`; 
+            
             lista.innerHTML += `
-              <div class="card">
-                <div style="color: var(--text-muted); font-size: 13px;">${item.full} (${item.cant})</div>
+              <div class="card ${colorClass}">
+                <div style="font-size: 13px; opacity: 0.8;">${item.full} (${item.cant})</div>
                 <div class="card-value">${item.val}</div>
+                <div class="extra-field">${item.extra}</div>
               </div>`;
           });
           
-          // Si hay más de uno, avisamos por voz que hay varios
-          if (coincidencias.length > 1) {
-            hablar(t.multiple);
-          } else {
-            hablar(coincidencias[0].val); 
-          }
+          if (coincidencias.length > 1) hablar(translations[currentLang].multiple);
+          else hablar(coincidencias[0].val);
           input.blur();
         } else {
-          lista.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-value" style="color:#ef4444; font-size:30px;">${t.notFound}</div></div>`;
-          hablar(t.notFound);
+          lista.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-value" style="color:#ef4444; font-size:30px;">${translations[currentLang].notFound}</div></div>`;
+          hablar(translations[currentLang].notFound);
         }
       }
     }
@@ -165,14 +155,10 @@
       const msg = new SpeechSynthesisUtterance(mensaje);
       msg.lang = currentLang;
       msg.pitch = 0.8;
-      msg.rate = 1.0;
       setTimeout(() => window.speechSynthesis.speak(msg), 50);
     }
 
-    btnMic.onclick = () => { 
-      precalentarVoz(); 
-      try { recognition.start(); } catch(e) { recognition.stop(); } 
-    };
+    btnMic.onclick = () => { precalentarVoz(); try { recognition.start(); } catch(e) { recognition.stop(); } };
   </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Buscador Pro - Silent Mode</title>
+  <title>Buscador Pro CS - Versión Estable</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -17,142 +17,101 @@
       align-items: center; min-height: 100vh;
     }
     
-    .lang-container { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; max-width: 360px; }
+    .lang-container { display: flex; gap: 10px; margin-bottom: 25px; width: 100%; max-width: 360px; }
     .lang-btn {
-      flex: 1; padding: 12px; border-radius: 10px; border: 2px solid var(--border);
+      flex: 1; padding: 14px; border-radius: 12px; border: 2px solid var(--border);
       background: var(--bg-panel); color: var(--text-muted); cursor: pointer;
-      font-weight: bold; font-size: 12px;
+      font-weight: bold; font-size: 13px; transition: 0.2s;
     }
     .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(34, 197, 94, 0.1); }
 
-    .mode-container {
-      display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
-      background: var(--bg-panel); padding: 8px 15px; border-radius: 20px; border: 1px solid var(--border);
-    }
-    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #3f3f46; transition: .4s; border-radius: 20px;
-    }
-    .slider:before {
-      position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
-      background-color: white; transition: .4s; border-radius: 50%;
-    }
-    input:checked + .slider { background-color: var(--accent); }
-    input:checked + .slider:before { transform: translateX(20px); }
-
     #btnMic {
-      width: 110px; height: 110px; border-radius: 50%; border: 4px solid var(--accent);
-      background: var(--bg-panel); color: var(--accent); font-size: 50px;
-      margin-bottom: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none;
+      width: 115px; height: 115px; border-radius: 50%; border: 4px solid var(--accent);
+      background: var(--bg-panel); color: var(--accent); font-size: 55px;
+      margin-bottom: 25px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none;
     }
-    .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; }
+    .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; box-shadow: 0 0 30px rgba(239, 68, 68, 0.5); }
+
+    .label-ui { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
 
     input[type="tel"] {
       width: 100%; max-width: 360px; background-color: var(--bg-panel);
       border: 2px solid var(--border); color: var(--accent);
-      font-size: 55px; font-weight: 800; padding: 10px;
-      border-radius: 15px; text-align: center; outline: none; margin-bottom: 15px;
+      font-size: 55px; font-weight: 800; padding: 12px;
+      border-radius: 15px; text-align: center; outline: none; margin-bottom: 20px;
     }
 
-    #listaResultados { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
-    .card { background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); padding: 20px; text-align: center; }
+    #listaResultados { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 15px; }
+    .card { background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); padding: 25px; text-align: center; animation: slideUp 0.2s ease; }
+    
     .color-0 { border-color: var(--accent); } 
     .color-1 { border-color: #facc15; color: #facc15; } 
     .color-2 { border-color: #3b82f6; color: #3b82f6; } 
     .color-3 { border-color: #ef4444; color: #ef4444; } 
 
-    .card-value { font-size: 80px; font-weight: 900; line-height: 1; margin: 5px 0; }
+    .card-value { font-size: 85px; font-weight: 900; line-height: 1; margin: 5px 0; }
     .extra-field { font-size: 24px; font-weight: bold; opacity: 0.9; }
-    #status { font-size: 10px; color: var(--text-muted); margin-top: 15px; }
-    #btnSensor { display: none; background: #3b82f6; color: white; border: none; padding: 8px; border-radius: 8px; font-size: 10px; margin-bottom: 10px; }
+    #status { font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center; }
+    #btnSensor { display: none; background: #3b82f6; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 10px; margin-bottom: 15px; width: 100%; max-width: 360px; }
+
+    @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
   </style>
 </head>
 <body>
 
-  <button id="btnSensor">ACTIVATE SENSOR</button>
+  <button id="btnSensor">ACTIVAR SENSOR DE MOVIMIENTO (SHAKE)</button>
 
   <div class="lang-container">
     <button class="lang-btn active" id="btn-en" onclick="setLang('en-US', this)">ENGLISH</button>
     <button class="lang-btn" id="btn-es" onclick="setLang('es-MX', this)">ESPAÑOL</button>
   </div>
 
-  <div class="mode-container">
-    <span style="font-size: 12px; font-weight: bold;">SILENT AUTO-LISTEN</span>
-    <label class="switch">
-      <input type="checkbox" id="checkContinuous">
-      <span class="slider"></span>
-    </label>
-  </div>
-
   <button id="btnMic">🎤</button>
+  
+  <div class="label-ui" id="ui-label">Enter last 4 digits</div>
   <input type="tel" id="inputNum" maxlength="4" placeholder="----" oninput="buscar()" onclick="resetUI()">
 
   <div id="listaResultados"></div>
-  <div id="status">Syncing...</div>
+  <div id="status">Syncing database...</div>
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbzJY1htCBjdSjmGISM705ehfzDbUV1OFpRrSEhgF8IqoD0dVk2vJVb6bYeUmsRuEjo9/exec";
     
     let db = [];
     let currentLang = 'en-US';
-    let isContinuous = false;
     let lastShake = 0;
     
     const translations = {
-      'en-US': { ready: 'Ready: ', multiple: 'Multiple!' },
-      'es-MX': { ready: 'Listo: ', multiple: '¡Varios!' }
+      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple found!' },
+      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios encontrados!' }
     };
 
     const input = document.getElementById("inputNum");
     const lista = document.getElementById("listaResultados");
     const status = document.getElementById("status");
     const btnMic = document.getElementById("btnMic");
-    const checkContinuous = document.getElementById("checkContinuous");
 
     window.onload = async () => {
       try {
         const resp = await fetch(API_URL);
         db = await resp.json();
-        status.innerText = translations[currentLang].ready + db.length + " pallets";
+        updateStatus();
         initShake();
-      } catch (e) { status.innerText = "ERROR"; }
+      } catch (e) { status.innerText = "CONNECTION ERROR"; }
     };
 
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    checkContinuous.onchange = (e) => {
-      isContinuous = e.target.checked;
-      if (isContinuous) {
-        recognition.continuous = true;
-        try { recognition.start(); } catch(err) {}
-      } else {
-        recognition.continuous = false;
-        recognition.stop();
-      }
-    };
 
     recognition.onstart = () => { btnMic.classList.add('mic-active'); };
-    recognition.onend = () => { 
-      btnMic.classList.remove('mic-active'); 
-      if (isContinuous) {
-          // Reinicio silencioso solo si es estrictamente necesario
-          setTimeout(() => { if (isContinuous) try { recognition.start(); } catch(e){} }, 300);
-      }
-    };
+    recognition.onend = () => { btnMic.classList.remove('mic-active'); };
     
     recognition.onresult = (e) => {
-      const resultIndex = e.results.length - 1;
-      const textoRaw = e.results[resultIndex][0].transcript.toUpperCase();
-      
-      if (textoRaw.includes("AGA") || textoRaw.includes("AGX")) return;
+      const texto = e.results[0][0].transcript.toUpperCase();
+      if (texto.includes("AGA") || textoRaw.includes("AGX")) return;
 
-      const num = textoRaw.replace(/\D/g, "").slice(-4);
+      const num = texto.replace(/\D/g, "").slice(-4);
       if (num && num.length === 4) { 
         input.value = num; 
         buscar(); 
@@ -160,7 +119,9 @@
     };
 
     function activarMicrofono() {
-      try { recognition.start(); } catch(e) {}
+      // Pequeño pre-despertar de audio solo en clic manual
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+      try { recognition.start(); } catch(e) { recognition.stop(); }
     }
 
     function initShake() {
@@ -189,15 +150,19 @@
       recognition.lang = lang;
       document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      status.innerText = translations[currentLang].ready + db.length + " pallets";
+      document.getElementById('ui-label').innerText = translations[currentLang].label;
+      updateStatus();
       resetUI();
     }
+
+    function updateStatus() { status.innerText = translations[currentLang].ready + db.length + " pallets"; }
 
     function resetUI() { input.value = ''; lista.innerHTML = ''; }
 
     function buscar() {
       const val = input.value;
       if (val.length === 4) {
+        btnMic.classList.remove('mic-active');
         const coincidencias = db.filter(row => row.full.endsWith(val));
         lista.innerHTML = "";
         
@@ -206,7 +171,7 @@
             const colorClass = `color-${index % 4}`; 
             lista.innerHTML += `
               <div class="card ${colorClass}">
-                <div style="font-size: 12px; opacity: 0.8;">${item.full} (${item.cant})</div>
+                <div style="font-size: 13px; opacity: 0.8;">${item.full} (${item.cant})</div>
                 <div class="card-value">${item.val}</div>
                 <div class="extra-field">${item.extra}</div>
               </div>`;
@@ -214,6 +179,9 @@
           if (coincidencias.length > 1) hablar(translations[currentLang].multiple);
           else hablar(coincidencias[0].val);
           input.blur();
+        } else {
+          lista.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-value" style="color:#ef4444; font-size:30px;">${translations[currentLang].notFound}</div></div>`;
+          hablar(translations[currentLang].notFound);
         }
       }
     }
@@ -223,7 +191,7 @@
       const msg = new SpeechSynthesisUtterance(m);
       msg.lang = currentLang;
       msg.pitch = 0.8;
-      window.speechSynthesis.speak(msg);
+      setTimeout(() => window.speechSynthesis.speak(msg), 50);
     }
 
     btnMic.onclick = activarMicrofono;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Buscador Pro CS - Shake Edition</title>
+  <title>Buscador Pro CS - WalkieTalkie</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -17,63 +17,81 @@
       align-items: center; min-height: 100vh;
     }
     
-    .lang-container { display: flex; gap: 10px; margin-bottom: 25px; width: 100%; max-width: 360px; }
+    .lang-container { display: flex; gap: 10px; margin-bottom: 15px; width: 100%; max-width: 360px; }
     .lang-btn {
-      flex: 1; padding: 14px; border-radius: 12px; border: 2px solid var(--border);
+      flex: 1; padding: 12px; border-radius: 10px; border: 2px solid var(--border);
       background: var(--bg-panel); color: var(--text-muted); cursor: pointer;
-      font-weight: bold; font-size: 13px; transition: 0.2s;
+      font-weight: bold; font-size: 12px; transition: 0.2s;
     }
     .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(34, 197, 94, 0.1); }
 
+    /* Switch de Modo Continuo */
+    .mode-container {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+      background: var(--bg-panel); padding: 8px 15px; border-radius: 20px; border: 1px solid var(--border);
+    }
+    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #3f3f46; transition: .4s; border-radius: 20px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
+      background-color: white; transition: .4s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--accent); }
+    input:checked + .slider:before { transform: translateX(20px); }
+
     #btnMic {
-      width: 110px; height: 110px; border-radius: 50%; border: 4px solid var(--accent);
-      background: var(--bg-panel); color: var(--accent); font-size: 50px;
-      margin-bottom: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none;
+      width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--accent);
+      background: var(--bg-panel); color: var(--accent); font-size: 45px;
+      margin-bottom: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none;
     }
     .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; box-shadow: 0 0 25px rgba(239, 68, 68, 0.5); }
-
-    .label-ui { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
 
     input[type="tel"] {
       width: 100%; max-width: 360px; background-color: var(--bg-panel);
       border: 2px solid var(--border); color: var(--accent);
-      font-size: 55px; font-weight: 800; padding: 12px;
-      border-radius: 15px; text-align: center; outline: none; margin-bottom: 20px;
+      font-size: 50px; font-weight: 800; padding: 10px;
+      border-radius: 15px; text-align: center; outline: none; margin-bottom: 15px;
     }
 
-    #listaResultados { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 15px; }
+    #listaResultados { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
+    .card { background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); padding: 20px; text-align: center; }
     
-    .card {
-      background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); 
-      padding: 25px; text-align: center; animation: slideUp 0.2s ease;
-    }
+    /* Colores Duplicados */
     .color-0 { border-color: var(--accent); } 
     .color-1 { border-color: #facc15; color: #facc15; } 
     .color-2 { border-color: #3b82f6; color: #3b82f6; } 
     .color-3 { border-color: #ef4444; color: #ef4444; } 
 
-    .card-value { font-size: 85px; font-weight: 900; line-height: 1; margin: 5px 0; }
-    .extra-field { font-size: 24px; font-weight: bold; margin-top: 5px; opacity: 0.9; }
-    #status { font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center; }
+    .card-value { font-size: 80px; font-weight: 900; line-height: 1; margin: 5px 0; }
+    .extra-field { font-size: 22px; font-weight: bold; opacity: 0.9; }
+    #status { font-size: 10px; color: var(--text-muted); margin-top: 15px; }
 
-    /* Botón para activar sensores en iOS */
-    #btnSensor { display: none; margin-bottom: 10px; background: #3b82f6; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 10px; cursor: pointer; }
-
-    @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
+    /* Botón Sensor iOS */
+    #btnSensor { display: none; background: #3b82f6; color: white; border: none; padding: 8px; border-radius: 8px; font-size: 10px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
 
-  <button id="btnSensor">ACTIVAR SENSOR DE MOVIMIENTO</button>
+  <button id="btnSensor">ACTIVATE MOTION SENSOR</button>
 
   <div class="lang-container">
     <button class="lang-btn active" id="btn-en" onclick="setLang('en-US', this)">ENGLISH</button>
     <button class="lang-btn" id="btn-es" onclick="setLang('es-MX', this)">ESPAÑOL</button>
   </div>
 
+  <div class="mode-container">
+    <span style="font-size: 12px; font-weight: bold;">AUTO-LISTEN</span>
+    <label class="switch">
+      <input type="checkbox" id="checkContinuous">
+      <span class="slider"></span>
+    </label>
+  </div>
+
   <button id="btnMic">🎤</button>
-  
-  <div class="label-ui" id="ui-label">Enter last 4 digits</div>
   <input type="tel" id="inputNum" maxlength="4" placeholder="----" oninput="buscar()" onclick="resetUI()">
 
   <div id="listaResultados"></div>
@@ -84,91 +102,94 @@
     
     let db = [];
     let currentLang = 'en-US';
+    let isContinuous = false;
     let lastShake = 0;
     
     const translations = {
-      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple found!' },
-      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios encontrados!' }
+      'en-US': { ready: 'Ready: ', multiple: 'Multiple!' },
+      'es-MX': { ready: 'Listo: ', multiple: '¡Varios!' }
     };
 
     const input = document.getElementById("inputNum");
     const lista = document.getElementById("listaResultados");
     const status = document.getElementById("status");
     const btnMic = document.getElementById("btnMic");
-    const btnSensor = document.getElementById("btnSensor");
+    const checkContinuous = document.getElementById("checkContinuous");
 
     window.onload = async () => {
       try {
         const resp = await fetch(API_URL);
         db = await resp.json();
         status.innerText = translations[currentLang].ready + db.length + " pallets";
-        initShake(); // Iniciar sensor
-      } catch (e) { status.innerText = "CONNECTION ERROR"; }
+        initShake();
+      } catch (e) { status.innerText = "ERROR"; }
     };
-
-    // --- LÓGICA DE SACUDIR (SHAKE) ---
-    function initShake() {
-      if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        // Para iOS
-        btnSensor.style.display = "block";
-        btnSensor.onclick = () => {
-          DeviceMotionEvent.requestPermission().then(response => {
-            if (response == 'granted') {
-              window.addEventListener('devicemotion', handleMotion);
-              btnSensor.style.display = "none";
-            }
-          });
-        };
-      } else {
-        // Para Android y otros
-        window.addEventListener('devicemotion', handleMotion);
-      }
-    }
-
-    function handleMotion(event) {
-      let acc = event.accelerationIncludingGravity;
-      let threshold = 15; // Sensibilidad del agite
-      let deltaX = Math.abs(acc.x);
-      let deltaY = Math.abs(acc.y);
-      let deltaZ = Math.abs(acc.z);
-
-      if (deltaX > threshold || deltaY > threshold || deltaZ > threshold) {
-        let now = new Date().getTime();
-        if ((now - lastShake) > 2000) { // Evita que se dispare 100 veces por un solo agite
-          lastShake = now;
-          activarMicrofono();
-        }
-      }
-    }
 
     const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
 
+    // CONFIGURACIÓN MODO CONTINUO
+    checkContinuous.onchange = (e) => {
+      isContinuous = e.target.checked;
+      if (isContinuous) {
+        recognition.continuous = true;
+        activarMicrofono();
+      } else {
+        recognition.continuous = false;
+        recognition.stop();
+      }
+    };
+
     recognition.onstart = () => { btnMic.classList.add('mic-active'); precalentarVoz(); };
-    recognition.onend = () => { btnMic.classList.remove('mic-active'); };
+    recognition.onend = () => { 
+      btnMic.classList.remove('mic-active'); 
+      if (isContinuous) recognition.start(); // Reinicia si está en modo auto
+    };
     
     recognition.onresult = (e) => {
-      const texto = e.results[0][0].transcript;
-      const num = texto.replace(/\D/g, "").slice(-4);
-      if (num) { 
+      const resultIndex = e.resultIndex;
+      const textoRaw = e.results[resultIndex][0].transcript.toUpperCase();
+      
+      // --- FILTRO DE SEGURIDAD AGA / AGX ---
+      if (textoRaw.includes("AGA") || textoRaw.includes("AGX")) {
+        console.log("Filtro activado: Código interno ignorado.");
+        return;
+      }
+
+      const num = textoRaw.replace(/\D/g, "").slice(-4);
+      if (num && num.length === 4) { 
         input.value = num; 
         buscar(); 
       }
     };
 
-    // --- TECLADO (F4) ---
-    document.addEventListener('keydown', function(event) {
-      if (event.key === "F4") {
-        event.preventDefault();
-        activarMicrofono();
-      }
-    });
-
     function activarMicrofono() {
       precalentarVoz(); 
-      try { recognition.start(); } catch(e) { recognition.stop(); }
+      try { recognition.start(); } catch(e) {}
     }
+
+    // SHAKE & KEYBOARD
+    function initShake() {
+      if (typeof DeviceMotionEvent.requestPermission === 'function') {
+        document.getElementById("btnSensor").style.display = "block";
+        document.getElementById("btnSensor").onclick = () => {
+          DeviceMotionEvent.requestPermission().then(res => {
+            if (res == 'granted') window.addEventListener('devicemotion', handleMotion);
+          });
+        };
+      } else { window.addEventListener('devicemotion', handleMotion); }
+    }
+
+    function handleMotion(e) {
+      let acc = e.accelerationIncludingGravity;
+      if (Math.abs(acc.x) > 15 || Math.abs(acc.y) > 15) {
+        let now = Date.now();
+        if (now - lastShake > 2000) { lastShake = now; activarMicrofono(); }
+      }
+    }
+
+    document.addEventListener('keydown', (e) => { if (e.key === "F4") { e.preventDefault(); activarMicrofono(); }});
 
     function precalentarVoz() { window.speechSynthesis.speak(new SpeechSynthesisUtterance("")); }
 
@@ -177,7 +198,6 @@
       recognition.lang = lang;
       document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('ui-label').innerText = translations[currentLang].label;
       status.innerText = translations[currentLang].ready + db.length + " pallets";
       resetUI();
     }
@@ -187,7 +207,7 @@
     function buscar() {
       const val = input.value;
       if (val.length === 4) {
-        btnMic.classList.remove('mic-active');
+        if (!isContinuous) btnMic.classList.remove('mic-active');
         const coincidencias = db.filter(row => row.full.endsWith(val));
         lista.innerHTML = "";
         
@@ -196,25 +216,21 @@
             const colorClass = `color-${index % 4}`; 
             lista.innerHTML += `
               <div class="card ${colorClass}">
-                <div style="font-size: 13px; opacity: 0.8;">${item.full} (${item.cant})</div>
+                <div style="font-size: 12px; opacity: 0.8;">${item.full} (${item.cant})</div>
                 <div class="card-value">${item.val}</div>
                 <div class="extra-field">${item.extra}</div>
               </div>`;
           });
-          
           if (coincidencias.length > 1) hablar(translations[currentLang].multiple);
           else hablar(coincidencias[0].val);
           input.blur();
-        } else {
-          lista.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-value" style="color:#ef4444; font-size:30px;">${translations[currentLang].notFound}</div></div>`;
-          hablar(translations[currentLang].notFound);
         }
       }
     }
 
-    function hablar(mensaje) {
+    function hablar(m) {
       window.speechSynthesis.cancel();
-      const msg = new SpeechSynthesisUtterance(mensaje);
+      const msg = new SpeechSynthesisUtterance(m);
       msg.lang = currentLang;
       msg.pitch = 0.8;
       setTimeout(() => window.speechSynthesis.speak(msg), 50);

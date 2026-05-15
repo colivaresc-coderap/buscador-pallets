@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Buscador Pro CS - Silent Mode</title>
+  <title>Buscador Pro CS - Ultra Silent</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -43,8 +43,8 @@
     input:checked + .slider:before { transform: translateX(20px); }
 
     #btnMic {
-      width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--accent);
-      background: var(--bg-panel); color: var(--accent); font-size: 45px;
+      width: 110px; height: 110px; border-radius: 50%; border: 4px solid var(--accent);
+      background: var(--bg-panel); color: var(--accent); font-size: 50px;
       margin-bottom: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none;
     }
     .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; box-shadow: 0 0 25px rgba(239, 68, 68, 0.5); }
@@ -52,7 +52,7 @@
     input[type="tel"] {
       width: 100%; max-width: 360px; background-color: var(--bg-panel);
       border: 2px solid var(--border); color: var(--accent);
-      font-size: 50px; font-weight: 800; padding: 10px;
+      font-size: 55px; font-weight: 800; padding: 10px;
       border-radius: 15px; text-align: center; outline: none; margin-bottom: 15px;
     }
 
@@ -65,7 +65,7 @@
     .color-3 { border-color: #ef4444; color: #ef4444; } 
 
     .card-value { font-size: 80px; font-weight: 900; line-height: 1; margin: 5px 0; }
-    .extra-field { font-size: 22px; font-weight: bold; opacity: 0.9; }
+    .extra-field { font-size: 24px; font-weight: bold; opacity: 0.9; }
     #status { font-size: 10px; color: var(--text-muted); margin-top: 15px; }
     #btnSensor { display: none; background: #3b82f6; color: white; border: none; padding: 8px; border-radius: 8px; font-size: 10px; margin-bottom: 10px; }
   </style>
@@ -80,7 +80,7 @@
   </div>
 
   <div class="mode-container">
-    <span style="font-size: 12px; font-weight: bold;">AUTO-LISTEN</span>
+    <span style="font-size: 12px; font-weight: bold;">AUTO-LISTEN (HANDS FREE)</span>
     <label class="switch">
       <input type="checkbox" id="checkContinuous">
       <span class="slider"></span>
@@ -125,6 +125,7 @@
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
     recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
 
     checkContinuous.onchange = (e) => {
       isContinuous = e.target.checked;
@@ -142,16 +143,17 @@
     recognition.onend = () => { 
       btnMic.classList.remove('mic-active'); 
       if (isContinuous) {
-        // En modo continuo, intentamos reiniciar solo si fue cerrado por el sistema
-        setTimeout(() => { if (isContinuous) recognition.start(); }, 10);
+          // Solo reiniciamos si el sistema lo mató por tiempo de silencio largo
+          try { recognition.start(); } catch(e) {}
       }
     };
     
     recognition.onresult = (e) => {
-      // En modo continuo, los resultados pueden venir en diferentes índices
+      // Tomamos el último resultado del array para evitar repeticiones en modo continuo
       const resultIndex = e.results.length - 1;
       const textoRaw = e.results[resultIndex][0].transcript.toUpperCase();
       
+      // Filtros de seguridad
       if (textoRaw.includes("AGA") || textoRaw.includes("AGX")) return;
 
       const num = textoRaw.replace(/\D/g, "").slice(-4);
@@ -162,8 +164,6 @@
     };
 
     function activarMicrofono() {
-      // Solo precalentamos si NO es modo continuo para evitar ruidos de buffer
-      if(!isContinuous) window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
       try { recognition.start(); } catch(e) {}
     }
 
@@ -197,10 +197,7 @@
       resetUI();
     }
 
-    function resetUI() { 
-      input.value = ''; 
-      lista.innerHTML = ''; 
-    }
+    function resetUI() { input.value = ''; lista.innerHTML = ''; }
 
     function buscar() {
       const val = input.value;
@@ -226,11 +223,11 @@
     }
 
     function hablar(m) {
+      // Cancelamos solo la voz, no el reconocimiento
       window.speechSynthesis.cancel();
       const msg = new SpeechSynthesisUtterance(m);
       msg.lang = currentLang;
       msg.pitch = 0.8;
-      // No silenciamos el micrófono para hablar, así evitamos el ciclo de "cerrar/abrir"
       window.speechSynthesis.speak(msg);
     }
 

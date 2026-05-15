@@ -47,7 +47,6 @@
       background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); 
       padding: 25px; text-align: center; animation: slideUp 0.2s ease;
     }
-    /* Estilos de colores para duplicados */
     .color-0 { border-color: var(--accent); } 
     .color-1 { border-color: #facc15; color: #facc15; } 
     .color-2 { border-color: #3b82f6; color: #3b82f6; } 
@@ -115,6 +114,23 @@
       }
     };
 
+    // --- NUEVA LÓGICA DE TECLADO (F4) ---
+    document.addEventListener('keydown', function(event) {
+      if (event.key === "F4") {
+        event.preventDefault(); // Evita funciones por defecto del navegador
+        activarMicrofono();
+      }
+    });
+
+    function activarMicrofono() {
+      precalentarVoz(); 
+      try { 
+        recognition.start(); 
+      } catch(e) { 
+        recognition.stop(); 
+      }
+    }
+
     function precalentarVoz() { window.speechSynthesis.speak(new SpeechSynthesisUtterance("")); }
 
     function setLang(lang, btn) {
@@ -132,9 +148,7 @@
     function buscar() {
       const val = input.value;
       if (val.length === 4) {
-        // Al encontrar los 4 números, apagamos el rojo del micro de inmediato
         btnMic.classList.remove('mic-active');
-        
         const coincidencias = db.filter(row => row.full.endsWith(val));
         lista.innerHTML = "";
         
@@ -167,7 +181,7 @@
       setTimeout(() => window.speechSynthesis.speak(msg), 50);
     }
 
-    btnMic.onclick = () => { precalentarVoz(); try { recognition.start(); } catch(e) { recognition.stop(); } };
+    btnMic.onclick = activarMicrofono;
   </script>
 </body>
 </html>

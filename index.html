@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Buscador Pro CS</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -25,11 +26,13 @@
     .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(34, 197, 94, 0.1); }
 
     #btnMic {
-      width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--accent);
-      background: var(--bg-panel); color: var(--accent); font-size: 45px;
+      width: 110px; height: 110px; border-radius: 50%; border: 4px solid var(--accent);
+      background: var(--bg-panel); color: var(--accent); font-size: 50px;
       margin-bottom: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none;
     }
     .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; box-shadow: 0 0 25px rgba(239, 68, 68, 0.5); }
+
+    .label-ui { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
 
     input[type="tel"] {
       width: 100%; max-width: 360px; background-color: var(--bg-panel);
@@ -44,14 +47,14 @@
       background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); 
       padding: 25px; text-align: center; animation: slideUp 0.2s ease;
     }
-    /* COLORES PARA DUPLICADOS */
-    .color-0 { border-color: var(--border); } /* Original */
-    .color-1 { border-color: #facc15; color: #facc15; } /* Amarillo */
-    .color-2 { border-color: #3b82f6; color: #3b82f6; } /* Azul */
-    .color-3 { border-color: #ef4444; color: #ef4444; } /* Rojo */
+    /* Estilos de colores para duplicados */
+    .color-0 { border-color: var(--accent); } 
+    .color-1 { border-color: #facc15; color: #facc15; } 
+    .color-2 { border-color: #3b82f6; color: #3b82f6; } 
+    .color-3 { border-color: #ef4444; color: #ef4444; } 
 
-    .card-value { font-size: 80px; font-weight: 900; line-height: 1; margin: 5px 0; }
-    .extra-field { font-size: 22px; font-weight: bold; margin-top: 5px; opacity: 0.9; }
+    .card-value { font-size: 85px; font-weight: 900; line-height: 1; margin: 5px 0; }
+    .extra-field { font-size: 24px; font-weight: bold; margin-top: 5px; opacity: 0.9; }
     #status { font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center; }
 
     @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
@@ -66,10 +69,11 @@
 
   <button id="btnMic">🎤</button>
   
-  <input type="tel" id="inputBusqueda" maxlength="4" placeholder="----" oninput="buscar()" onclick="resetUI()">
+  <div class="label-ui" id="ui-label">Enter last 4 digits</div>
+  <input type="tel" id="inputNum" maxlength="4" placeholder="----" oninput="buscar()" onclick="resetUI()">
 
   <div id="listaResultados"></div>
-  <div id="status">Syncing database...</div>
+  <div id="status">Syncing...</div>
 
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbzJY1htCBjdSjmGISM705ehfzDbUV1OFpRrSEhgF8IqoD0dVk2vJVb6bYeUmsRuEjo9/exec";
@@ -78,11 +82,11 @@
     let currentLang = 'en-US';
     
     const translations = {
-      'en-US': { ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple found!' },
-      'es-MX': { ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios encontrados!' }
+      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple found!' },
+      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios encontrados!' }
     };
 
-    const input = document.getElementById("inputBusqueda");
+    const input = document.getElementById("inputNum");
     const lista = document.getElementById("listaResultados");
     const status = document.getElementById("status");
     const btnMic = document.getElementById("btnMic");
@@ -91,7 +95,7 @@
       try {
         const resp = await fetch(API_URL);
         db = await resp.json();
-        updateStatus();
+        status.innerText = translations[currentLang].ready + db.length + " pallets";
       } catch (e) { status.innerText = "CONNECTION ERROR"; }
     };
 
@@ -100,10 +104,15 @@
     recognition.lang = 'en-US';
 
     recognition.onstart = () => { btnMic.classList.add('mic-active'); precalentarVoz(); };
+    recognition.onend = () => { btnMic.classList.remove('mic-active'); };
+    
     recognition.onresult = (e) => {
       const texto = e.results[0][0].transcript;
       const num = texto.replace(/\D/g, "").slice(-4);
-      if (num) { input.value = num; buscar(); }
+      if (num) { 
+        input.value = num; 
+        buscar(); 
+      }
     };
 
     function precalentarVoz() { window.speechSynthesis.speak(new SpeechSynthesisUtterance("")); }
@@ -113,25 +122,25 @@
       recognition.lang = lang;
       document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      updateStatus();
+      document.getElementById('ui-label').innerText = translations[currentLang].label;
+      status.innerText = translations[currentLang].ready + db.length + " pallets";
       resetUI();
     }
-
-    function updateStatus() { status.innerText = translations[currentLang].ready + db.length + " pallets"; }
 
     function resetUI() { input.value = ''; lista.innerHTML = ''; precalentarVoz(); }
 
     function buscar() {
       const val = input.value;
       if (val.length === 4) {
+        // Al encontrar los 4 números, apagamos el rojo del micro de inmediato
+        btnMic.classList.remove('mic-active');
+        
         const coincidencias = db.filter(row => row.full.endsWith(val));
         lista.innerHTML = "";
         
         if (coincidencias.length > 0) {
           coincidencias.forEach((item, index) => {
-            // El color depende del índice (0, 1, 2 o 3)
             const colorClass = `color-${index % 4}`; 
-            
             lista.innerHTML += `
               <div class="card ${colorClass}">
                 <div style="font-size: 13px; opacity: 0.8;">${item.full} (${item.cant})</div>

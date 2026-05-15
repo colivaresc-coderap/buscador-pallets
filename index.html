@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Buscador Pro CS - Ultra Silent</title>
+  <title>Buscador Pro - Silent Mode</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -21,7 +21,7 @@
     .lang-btn {
       flex: 1; padding: 12px; border-radius: 10px; border: 2px solid var(--border);
       background: var(--bg-panel); color: var(--text-muted); cursor: pointer;
-      font-weight: bold; font-size: 12px; transition: 0.2s;
+      font-weight: bold; font-size: 12px;
     }
     .lang-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(34, 197, 94, 0.1); }
 
@@ -47,7 +47,7 @@
       background: var(--bg-panel); color: var(--accent); font-size: 50px;
       margin-bottom: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; outline: none;
     }
-    .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; box-shadow: 0 0 25px rgba(239, 68, 68, 0.5); }
+    .mic-active { background: #ef4444 !important; border-color: #ef4444 !important; color: white !important; }
 
     input[type="tel"] {
       width: 100%; max-width: 360px; background-color: var(--bg-panel);
@@ -58,7 +58,6 @@
 
     #listaResultados { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 12px; }
     .card { background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); padding: 20px; text-align: center; }
-    
     .color-0 { border-color: var(--accent); } 
     .color-1 { border-color: #facc15; color: #facc15; } 
     .color-2 { border-color: #3b82f6; color: #3b82f6; } 
@@ -80,7 +79,7 @@
   </div>
 
   <div class="mode-container">
-    <span style="font-size: 12px; font-weight: bold;">AUTO-LISTEN (HANDS FREE)</span>
+    <span style="font-size: 12px; font-weight: bold;">SILENT AUTO-LISTEN</span>
     <label class="switch">
       <input type="checkbox" id="checkContinuous">
       <span class="slider"></span>
@@ -131,7 +130,7 @@
       isContinuous = e.target.checked;
       if (isContinuous) {
         recognition.continuous = true;
-        activarMicrofono();
+        try { recognition.start(); } catch(err) {}
       } else {
         recognition.continuous = false;
         recognition.stop();
@@ -139,21 +138,18 @@
     };
 
     recognition.onstart = () => { btnMic.classList.add('mic-active'); };
-    
     recognition.onend = () => { 
       btnMic.classList.remove('mic-active'); 
       if (isContinuous) {
-          // Solo reiniciamos si el sistema lo mató por tiempo de silencio largo
-          try { recognition.start(); } catch(e) {}
+          // Reinicio silencioso solo si es estrictamente necesario
+          setTimeout(() => { if (isContinuous) try { recognition.start(); } catch(e){} }, 300);
       }
     };
     
     recognition.onresult = (e) => {
-      // Tomamos el último resultado del array para evitar repeticiones en modo continuo
       const resultIndex = e.results.length - 1;
       const textoRaw = e.results[resultIndex][0].transcript.toUpperCase();
       
-      // Filtros de seguridad
       if (textoRaw.includes("AGA") || textoRaw.includes("AGX")) return;
 
       const num = textoRaw.replace(/\D/g, "").slice(-4);
@@ -223,7 +219,6 @@
     }
 
     function hablar(m) {
-      // Cancelamos solo la voz, no el reconocimiento
       window.speechSynthesis.cancel();
       const msg = new SpeechSynthesisUtterance(m);
       msg.lang = currentLang;

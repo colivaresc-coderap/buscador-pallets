@@ -87,8 +87,8 @@
     let estaBloqueado = false;
     
     const translations = {
-      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple!', complete: 'Order Complete', updating: 'Updating...', connector: ' of ' },
-      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios!', complete: 'Completado', updating: 'Actualizando...', connector: ' de ' }
+      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple!', complete: 'Order Complete', connector: ' of ' },
+      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios!', complete: 'Completado', connector: ' de ' }
     };
 
     const input = document.getElementById("inputNum");
@@ -112,7 +112,6 @@
     recognition.onstart = () => { if(!estaBloqueado) btnMic.classList.add('mic-active'); };
     recognition.onend = () => { btnMic.classList.remove('mic-active'); };
     
-    // AQUÍ CORREGÍ EL ERROR DE DEDO (Cambiado textoRaw por texto)
     recognition.onresult = (e) => {
       if(estaBloqueado) return;
       const texto = e.results[0][0].transcript.toUpperCase();
@@ -211,64 +210,56 @@
       }
     }
 
-    async function confirmarCaja(idIndexColumnaT) {
+    function confirmarCaja(idIndexColumnaT) {
       if(estaBloqueado) return;
       
       const item = db.find(row => row.idFila === idIndexColumnaT);
       if (!item) return;
 
-      estaBloqueado = true; 
-      status.innerText = translations[currentLang].updating;
-
-      try {
-        const respuesta = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain" }, 
-          body: JSON.stringify({ idFila: item.idFila, cant: item.cant })
-        });
-        
-        const resultadoJson = await respuesta.json();
-        
-        if (resultadoJson.success) {
-          item.actual = resultadoJson.nuevoActual;
-          
-          const elementoProgreso = document.getElementById(`progreso-${idIndexColumnaT}`);
-          if(elementoProgreso) elementoProgreso.innerText = `${item.actual} / ${item.cant}`;
-
-          if (item.actual >= item.cant) {
-            const tarjeta = document.getElementById(`card-${idIndexColumnaT}`);
-            if(tarjeta) tarjeta.className = "card card-success"; 
-            
-            ejecutarTonoExito();
-            
-            const fraseCompleta = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
-            hablar(fraseCompleta + ". " + translations[currentLang].complete);
-
-            setTimeout(() => {
-              estaBloqueado = false;
-              updateStatus();
-              resetUI();
-            }, 3000);
-
-          } else {
-            const fraseProgreso = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
-            hablar(fraseProgreso);
-            
-            estaBloqueado = false;
-            updateStatus();
-            resetUI();
-          }
-        } else {
-          estaBloqueado = false;
-          updateStatus();
-          alert("Error: " + resultadoJson.error);
-        }
-
-      } catch (err) {
-        estaBloqueado = false;
-        updateStatus();
-        console.error("Error de conexión:", err);
+      if (item.actual >= item.cant) {
+        hablar(translations[currentLang].complete);
+        return;
       }
+
+      // OPCON 2 SEPARAR LA VOZ: Sumamos el número en la memoria local inmediatamente
+      item.actual += 1;
+
+      // Actualizamos la pantalla de forma instantánea
+      const elementoProgreso = document.getElementById(`progreso-${idIndexColumnaT}`);
+      if(elementoProgreso) elementoProgreso.innerText = `${item.actual} / ${item.cant}`;
+
+      // ¿Con esta suma local se completó el pallet?
+      if (item.actual >= item.cant) {
+        estaBloqueado = true; // Bloqueamos la pantalla para congelar la alerta verde
+        const tarjeta = document.getElementById(`card-${idIndexColumnaT}`);
+        if(tarjeta) tarjeta.className = "card card-success"; 
+        
+        ejecutarTonoExito();
+        
+        const fraseCompleta = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
+        hablar(fraseCompleta + ". " + translations[currentLang].complete);
+
+        setTimeout(() => {
+          estaBloqueado = false;
+          resetUI();
+        }, 3000);
+
+      } else {
+        // SI NO SE COMPLETÓ: Genera la frase y habla AL INSTANTE (hilo directo del dedo, sin red)
+        const fraseProgreso = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
+        hablar(fraseProgreso);
+        resetUI(); // Limpieza rápida automática
+      }
+
+      // LA RED TRABAJA EN SEGUNDO PLANO: Enviamos los datos asíncronamente
+      fetch(API_URL, {
+        method: "POST",
+        mode: "no-cors", // Elimina esperas innecesarias de CORS para máxima velocidad de red
+        headers: { "Content-Type": "text/plain" }, 
+        body: JSON.stringify({ idFila: item.idFila, cant: item.cant })
+      }).then(() => {
+        console.log("Sheets actualizado en segundo plano de manera silenciosa.");
+      }).catch(err => console.error("Error de segundo plano:", err));
     }
 
     function ejecutarTonoExito() {

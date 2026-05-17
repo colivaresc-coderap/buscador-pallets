@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Buscador Pro CS - Conteo</title>
+  <title>Buscador Pro CS</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -50,7 +50,6 @@
     .color-2 { border-color: #3b82f6; color: #3b82f6; } 
     .color-3 { border-color: #ef4444; color: #ef4444; } 
 
-    /* Estilo Especial de Éxito Completo */
     .card-success { background-color: #166534 !important; border-color: #22c55e !important; color: white !important; }
     .card-success .card-value, .card-success .extra-field, .card-success .progress-txt { color: white !important; }
 
@@ -84,8 +83,8 @@
     let db = [];
     let currentLang = 'en-US';
     let lastShake = 0;
-    let listaCoindicenciasActuales = []; // Guarda lo que se está mostrando en pantalla
-    let estaBloqueado = false; // Detiene entradas mientras dura la alerta de 3 seg
+    let listaCoindicenciasActuales = [];
+    let estaBloqueado = false;
     
     const translations = {
       'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple!', complete: 'Order Complete' },
@@ -149,7 +148,6 @@
         let now = Date.now();
         if (now - lastShake > 2000) { 
           lastShake = now; 
-          // Si hay una tarjeta en pantalla, el agite cuenta como confirmación de caja
           if(listaCoindicenciasActuales.length === 1) {
             confirmarCaja(listaCoindicenciasActuales[0].idFila);
           } else {
@@ -188,8 +186,6 @@
         if (listaCoindicenciasActuales.length > 0) {
           listaCoindicenciasActuales.forEach((item, index) => {
             const colorClass = `color-${index % 4}`; 
-            
-            // Si ya estaba completo en la base de datos, le ponemos el diseño verde directo
             const esCompleto = item.actual >= item.cant;
             const extraClase = esCompleto ? 'card-success' : colorClass;
 
@@ -212,54 +208,45 @@
       }
     }
 
-    function confirmarCaja(idFila) {
+    function confirmarCaja(idIndexColumnaT) {
       if(estaBloqueado) return;
       
-      // Encontrar el item en nuestra memoria local
-      const item = db.find(row => row.idFila === idFila);
+      const item = db.find(row => row.idFila === idIndexColumnaT);
       if (!item) return;
 
       if (item.actual >= item.cant) {
         hablar(translations[currentLang].complete);
-        return; // Ya estaba completo
+        return;
       }
 
-      // 1. Suma inmediata en la pantalla para velocidad
       item.actual += 1;
-      const elementoProgreso = document.getElementById(`progreso-${idFila}`);
+      const elementoProgreso = document.getElementById(`progreso-${idIndexColumnaT}`);
       if(elementoProgreso) elementoProgreso.innerText = `${item.actual} / ${item.cant}`;
 
-      // 2. Comprobar si con esta caja se completó
       if (item.actual >= item.cant) {
-        estaBloqueado = true; // Bloqueamos la interfaz para la alerta
-        const tarjeta = document.getElementById(`card-${idFila}`);
-        if(tarjeta) tarjeta.className = "card card-success"; // Volverla verde brillante
+        estaBloqueado = true;
+        const tarjeta = document.getElementById(`card-${idIndexColumnaT}`);
+        if(tarjeta) tarjeta.className = "card card-success"; 
         
-        // Sonido de éxito corto y hablar "Completado"
         ejecutarTonoExito();
         hablar(translations[currentLang].complete);
 
-        // ESPERAR EXACTAMENTE 3 SEGUNDOS Y LIMPIAR
         setTimeout(() => {
           estaBloqueado = false;
           resetUI();
         }, 3000);
 
       } else {
-        // Si no se ha completado, dice el número actual y limpia de inmediato
         hablar(item.actual.toString());
         resetUI();
       }
 
-      // 3. Enviar la actualización a Google Sheets en segundo plano (asíncrono)
       fetch(API_URL, {
         method: "POST",
-        mode: "no-cors", // Evita problemas de política CORS con Google Apps Script
+        mode: "no-cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idFila: item.idFila, cant: item.cant })
-      }).then(() => {
-        console.log("Sheets actualizado en segundo plano para fila: " + idFila);
-      }).catch(err => console.error("Error al reportar a Sheets:", err));
+      }).catch(err => console.error("Error:", err));
     }
 
     function ejecutarTonoExito() {
@@ -270,8 +257,8 @@
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Nota D5
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // Nota A5 (Tono alegre)
+        oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); 
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); 
         gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.25);

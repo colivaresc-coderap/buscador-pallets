@@ -71,7 +71,7 @@
 
   <button id="btnMic">🎤</button>
   
-  <div class="label-ui" id="ui-label">Enter last 4 digits.</div>
+  <div class="label-ui" id="ui-label">Enter last 4 digits</div>
   <input type="tel" id="inputNum" maxlength="4" placeholder="----" oninput="buscar()" onclick="resetUI()">
 
   <div id="listaResultados"></div>
@@ -176,7 +176,6 @@
     function resetUI() { if(!estaBloqueado) { input.value = ''; lista.innerHTML = ''; listaCoindicenciasActuales = []; } }
 
     function buscar() {
-      if(estaBloqueado) return;
       const val = input.value;
       if (val.length === 4) {
         btnMic.classList.remove('mic-active');
@@ -198,12 +197,14 @@
               </div>`;
           });
           
-          // LA CORRECCIÓN AQUÍ: Si hay múltiples dice "¡Varios!", si hay uno solo dice el nombre del pallet (ej: "P6")
+          // La voz se ejecuta inmediatamente aquí, libre de bloqueos
           if (listaCoindicenciasActuales.length > 1) hablar(translations[currentLang].multiple);
           else hablar(listaCoindicenciasActuales[0].val);
           
+          if(estaBloqueado) return;
           input.blur();
         } else {
+          if(estaBloqueado) return;
           lista.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-value" style="color:#ef4444; font-size:30px;">${translations[currentLang].notFound}</div></div>`;
           hablar(translations[currentLang].notFound);
         }

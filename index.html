@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Buscador Pro CS - Versión Conteo</title>
+  <title>Buscador Pro CS - Edición Conteo</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -50,7 +50,6 @@
     .color-2 { border-color: #3b82f6; color: #3b82f6; } 
     .color-3 { border-color: #ef4444; color: #ef4444; } 
 
-    /* Estilo Verde de Éxito */
     .card-success { background-color: #166534 !important; border-color: #22c55e !important; color: white !important; }
     .card-success .card-value, .card-success .extra-field, .card-success .progress-txt { color: white !important; }
 
@@ -74,7 +73,7 @@
 
   <button id="btnMic">🎤</button>
   
-  <div class="label-ui" id="ui-label">Enter last 4 digits</div>
+  <div class="label-ui" id="ui-label">Enter last 4 digits .. </div>
   <input type="tel" id="inputNum" maxlength="4" placeholder="----" oninput="buscar()" onclick="resetUI()">
 
   <div id="listaResultados"></div>
@@ -87,7 +86,7 @@
     let currentLang = 'en-US';
     let lastShake = 0;
     let listaCoindicenciasActuales = [];
-    let estaBloqueado = false; // Solo congela la pantalla en el éxito de 3 segundos
+    let estaBloqueado = false; 
     
     const translations = {
       'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple found!', complete: 'Order Complete', connector: ' of ' },
@@ -151,7 +150,6 @@
         let now = Date.now();
         if (now - lastShake > 2000) { 
           lastShake = now; 
-          // Si hay un pallet visible, el agite añade la caja
           if (listaCoindicenciasActuales.length === 1) {
             confirmarCaja(listaCoindicenciasActuales[0].idFila);
           } else {
@@ -226,15 +224,15 @@
         return;
       }
 
-      // Suma instantánea en la memoria local (Garantiza 0 milisegundos de lentitud)
+      // Suma local inmediata para respuesta instantánea (0 milisegundos)
       item.actual += 1;
 
       const elementoProgreso = document.getElementById(`progreso-${idIndexColumnaT}`);
       if (elementoProgreso) elementoProgreso.innerText = `${item.actual} / ${item.cant}`;
 
-      // ¿Completó la orden completa?
+      // ¿Completó la totalidad de las unidades del pallet?
       if (item.actual >= item.cant) {
-        estaBloqueado = true; // Congelamos la interfaz solo para el aviso verde
+        estaBloqueado = true; 
         const tarjeta = document.getElementById(`card-${idIndexColumnaT}`);
         if (tarjeta) tarjeta.className = "card card-success"; 
         
@@ -249,19 +247,19 @@
         }, 3000);
 
       } else {
-        // Frase fluida "X de Y" (ej: "Tres de Seis") directa del dedo, el celular nunca la bloqueará
+        // Ejecución de voz directa ligada al dedo/agite para evadir las restricciones móviles
         const fraseProgreso = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
         hablar(fraseProgreso);
-        resetUI(); // Limpieza instantánea para seguir trabajando rápido
+        resetUI(); 
       }
 
-      // ENVÍO DE RED EN SEGUNDO PLANO (Asíncrono y silencioso)
+      // Sincronización en segundo plano sin frenar al operario
       fetch(API_URL, {
         method: "POST",
         mode: "no-cors", 
         headers: { "Content-Type": "text/plain" }, 
         body: JSON.stringify({ idFila: item.idFila, cant: item.cant })
-      }).catch(err => console.error("Error de segundo plano silencioso:", err));
+      }).catch(err => console.error("Error asíncrono:", err));
     }
 
     function ejecutarTonoExito() {

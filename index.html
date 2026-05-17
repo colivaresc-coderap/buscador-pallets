@@ -87,8 +87,8 @@
     let estaBloqueado = false;
     
     const translations = {
-      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple!', complete: 'Order Complete' },
-      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios!', complete: 'Completado' }
+      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple!', complete: 'Order Complete', updating: 'Updating...' },
+      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios!', complete: 'Completado', updating: 'Actualizando...' }
     };
 
     const input = document.getElementById("inputNum");
@@ -208,45 +208,65 @@
       }
     }
 
-    function confirmarCaja(idIndexColumnaT) {
+    async function confirmarCaja(idIndexColumnaT) {
       if(estaBloqueado) return;
       
       const item = db.find(row => row.idFila === idIndexColumnaT);
       if (!item) return;
 
-      if (item.actual >= item.cant) {
-        hablar(translations[currentLang].complete);
-        return;
-      }
+      // Bloqueamos la interfaz un instante para recibir el dato real del Sheets
+      estaBloqueado = true; 
+      status.innerText = translations[currentLang].updating;
 
-      item.actual += 1;
-      const elementoProgreso = document.getElementById(`progreso-${idIndexColumnaT}`);
-      if(elementoProgreso) elementoProgreso.innerText = `${item.actual} / ${item.cant}`;
-
-      if (item.actual >= item.cant) {
-        estaBloqueado = true;
-        const tarjeta = document.getElementById(`card-${idIndexColumnaT}`);
-        if(tarjeta) tarjeta.className = "card card-success"; 
+      try {
+        const respuesta = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" }, 
+          body: JSON.stringify({ idFila: item.idFila, cant: item.cant })
+        });
         
-        ejecutarTonoExito();
-        hablar(translations[currentLang].complete);
+        const resultadoJson = await respuesta.json();
+        
+        if (resultadoJson.success) {
+          // El Sheets nos regresa el conteo fresco tras sumarle 1 en la base de datos
+          item.actual = resultadoJson.nuevoActual;
+          
+          const elementoProgreso = document.getElementById(`progreso-${idIndexColumnaT}`);
+          if(elementoProgreso) elementoProgreso.innerText = `${item.actual} / ${item.cant}`;
 
-        setTimeout(() => {
+          // ¿Este nuevo número completó el pallet?
+          if (item.actual >= item.cant) {
+            const tarjeta = document.getElementById(`card-${idIndexColumnaT}`);
+            if(tarjeta) tarjeta.className = "card card-success"; // Se vuelve verde
+            
+            ejecutarTonoExito();
+            hablar(translations[currentLang].complete);
+
+            // Mantiene la alerta verde por 3 segundos antes de limpiar la pantalla
+            setTimeout(() => {
+              estaBloqueado = false;
+              updateStatus();
+              resetUI();
+            }, 3000);
+
+          } else {
+            // SI NO SE HA COMPLETADO: Habla el número real recibido y limpia de INMEDIATO
+            hablar(item.actual.toString());
+            estaBloqueado = false;
+            updateStatus();
+            resetUI(); // Se borra la pantalla al instante para la siguiente caja
+          }
+        } else {
           estaBloqueado = false;
-          resetUI();
-        }, 3000);
+          updateStatus();
+          alert("Error: " + resultadoJson.error);
+        }
 
-      } else {
-        hablar(item.actual.toString());
-        resetUI();
+      } catch (err) {
+        estaBloqueado = false;
+        updateStatus();
+        console.error("Error de conexión:", err);
       }
-
-      fetch(API_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idFila: item.idFila, cant: item.cant })
-      }).catch(err => console.error("Error:", err));
     }
 
     function ejecutarTonoExito() {

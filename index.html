@@ -198,8 +198,10 @@
               </div>`;
           });
           
+          // LA CORRECCIÓN AQUÍ: Si hay múltiples dice "¡Varios!", si hay uno solo dice el nombre del pallet (ej: "P6")
           if (listaCoindicenciasActuales.length > 1) hablar(translations[currentLang].multiple);
           else hablar(listaCoindicenciasActuales[0].val);
+          
           input.blur();
         } else {
           lista.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-value" style="color:#ef4444; font-size:30px;">${translations[currentLang].notFound}</div></div>`;
@@ -238,7 +240,6 @@
             
             ejecutarTonoExito();
             
-            // Al completar, dice la última frase (ej: "Diez de Diez") antes de anunciar que está completo
             const fraseCompleta = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
             hablar(fraseCompleta + ". " + translations[currentLang].complete);
 
@@ -249,7 +250,6 @@
             }, 3000);
 
           } else {
-            // AQUÍ ESTÁ EL CAMBIO: Arma la frase con "X de Y" (ej: "Tres de Seis")
             const fraseProgreso = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
             hablar(fraseProgreso);
             

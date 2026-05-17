@@ -109,7 +109,8 @@
     
     recognition.onresult = (e) => {
       const texto = e.results[0][0].transcript.toUpperCase();
-      if (texto.includes("AGA") || textoRaw.includes("AGX")) return;
+      // Corregido: textoRaw cambiado a texto para evitar que se rompa por voz
+      if (texto.includes("AGA") || texto.includes("AGX")) return;
 
       const num = texto.replace(/\D/g, "").slice(-4);
       if (num && num.length === 4) { 
@@ -119,7 +120,6 @@
     };
 
     function activarMicrofono() {
-      // Pequeño pre-despertar de audio solo en clic manual
       window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
       try { recognition.start(); } catch(e) { recognition.stop(); }
     }

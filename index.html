@@ -87,8 +87,8 @@
     let estaBloqueado = false;
     
     const translations = {
-      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple!', complete: 'Order Complete', updating: 'Updating...' },
-      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios!', complete: 'Completado', updating: 'Actualizando...' }
+      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple!', complete: 'Order Complete', updating: 'Updating...', connector: ' of ' },
+      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios!', complete: 'Completado', updating: 'Actualizando...', connector: ' de ' }
     };
 
     const input = document.getElementById("inputNum");
@@ -214,7 +214,6 @@
       const item = db.find(row => row.idFila === idIndexColumnaT);
       if (!item) return;
 
-      // Bloqueamos la interfaz un instante para recibir el dato real del Sheets
       estaBloqueado = true; 
       status.innerText = translations[currentLang].updating;
 
@@ -228,21 +227,21 @@
         const resultadoJson = await respuesta.json();
         
         if (resultadoJson.success) {
-          // El Sheets nos regresa el conteo fresco tras sumarle 1 en la base de datos
           item.actual = resultadoJson.nuevoActual;
           
           const elementoProgreso = document.getElementById(`progreso-${idIndexColumnaT}`);
           if(elementoProgreso) elementoProgreso.innerText = `${item.actual} / ${item.cant}`;
 
-          // ¿Este nuevo número completó el pallet?
           if (item.actual >= item.cant) {
             const tarjeta = document.getElementById(`card-${idIndexColumnaT}`);
-            if(tarjeta) tarjeta.className = "card card-success"; // Se vuelve verde
+            if(tarjeta) tarjeta.className = "card card-success"; 
             
             ejecutarTonoExito();
-            hablar(translations[currentLang].complete);
+            
+            // Al completar, dice la última frase (ej: "Diez de Diez") antes de anunciar que está completo
+            const fraseCompleta = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
+            hablar(fraseCompleta + ". " + translations[currentLang].complete);
 
-            // Mantiene la alerta verde por 3 segundos antes de limpiar la pantalla
             setTimeout(() => {
               estaBloqueado = false;
               updateStatus();
@@ -250,11 +249,13 @@
             }, 3000);
 
           } else {
-            // SI NO SE HA COMPLETADO: Habla el número real recibido y limpia de INMEDIATO
-            hablar(item.actual.toString());
+            // AQUÍ ESTÁ EL CAMBIO: Arma la frase con "X de Y" (ej: "Tres de Seis")
+            const fraseProgreso = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
+            hablar(fraseProgreso);
+            
             estaBloqueado = false;
             updateStatus();
-            resetUI(); // Se borra la pantalla al instante para la siguiente caja
+            resetUI();
           }
         } else {
           estaBloqueado = false;

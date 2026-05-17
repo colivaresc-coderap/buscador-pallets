@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Buscador Pro CS - Versión Estable</title>
+  <title>Buscador Pro CS - Conteo</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -42,19 +42,23 @@
     }
 
     #listaResultados { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 15px; }
-    .card { background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); padding: 25px; text-align: center; animation: slideUp 0.2s ease; }
+    .card { background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); padding: 25px; text-align: center; cursor: pointer; transition: background-color 0.3s, transform 0.1s; }
+    .card:active { transform: scale(0.98); }
     
     .color-0 { border-color: var(--accent); } 
     .color-1 { border-color: #facc15; color: #facc15; } 
     .color-2 { border-color: #3b82f6; color: #3b82f6; } 
     .color-3 { border-color: #ef4444; color: #ef4444; } 
 
+    /* Estilo Especial de Éxito Completo */
+    .card-success { background-color: #166534 !important; border-color: #22c55e !important; color: white !important; }
+    .card-success .card-value, .card-success .extra-field, .card-success .progress-txt { color: white !important; }
+
     .card-value { font-size: 85px; font-weight: 900; line-height: 1; margin: 5px 0; }
-    .extra-field { font-size: 24px; font-weight: bold; opacity: 0.9; }
+    .progress-txt { font-size: 26px; font-weight: 800; margin: 10px 0; color: var(--text-main); }
+    .extra-field { font-size: 20px; font-weight: bold; opacity: 0.9; }
     #status { font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center; }
     #btnSensor { display: none; background: #3b82f6; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 10px; margin-bottom: 15px; width: 100%; max-width: 360px; }
-
-    @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
   </style>
 </head>
 <body>
@@ -80,10 +84,12 @@
     let db = [];
     let currentLang = 'en-US';
     let lastShake = 0;
+    let listaCoindicenciasActuales = []; // Guarda lo que se está mostrando en pantalla
+    let estaBloqueado = false; // Detiene entradas mientras dura la alerta de 3 seg
     
     const translations = {
-      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple found!' },
-      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios encontrados!' }
+      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple!', complete: 'Order Complete' },
+      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios!', complete: 'Completado' }
     };
 
     const input = document.getElementById("inputNum");
@@ -104,12 +110,13 @@
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
 
-    recognition.onstart = () => { btnMic.classList.add('mic-active'); };
+    recognition.onstart = () => { if(!estaBloqueado) btnMic.classList.add('mic-active'); };
     recognition.onend = () => { btnMic.classList.remove('mic-active'); };
     
     recognition.onresult = (e) => {
+      if(estaBloqueado) return;
       const texto = e.results[0][0].transcript.toUpperCase();
-      if (texto.includes("AGA") || textoRaw.includes("AGX")) return;
+      if (texto.includes("AGA") || texto.includes("AGX")) return;
 
       const num = texto.replace(/\D/g, "").slice(-4);
       if (num && num.length === 4) { 
@@ -119,7 +126,7 @@
     };
 
     function activarMicrofono() {
-      // Pequeño pre-despertar de audio solo en clic manual
+      if(estaBloqueado) return;
       window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
       try { recognition.start(); } catch(e) { recognition.stop(); }
     }
@@ -136,16 +143,28 @@
     }
 
     function handleMotion(e) {
+      if(estaBloqueado) return;
       let acc = e.accelerationIncludingGravity;
       if (Math.abs(acc.x) > 15 || Math.abs(acc.y) > 15) {
         let now = Date.now();
-        if (now - lastShake > 2000) { lastShake = now; activarMicrofono(); }
+        if (now - lastShake > 2000) { 
+          lastShake = now; 
+          // Si hay una tarjeta en pantalla, el agite cuenta como confirmación de caja
+          if(listaCoindicenciasActuales.length === 1) {
+            confirmarCaja(listaCoindicenciasActuales[0].idFila);
+          } else {
+            activarMicrofono(); 
+          }
+        }
       }
     }
 
-    document.addEventListener('keydown', (e) => { if (e.key === "F4") { e.preventDefault(); activarMicrofono(); }});
+    document.addEventListener('keydown', (e) => { 
+      if (e.key === "F4") { e.preventDefault(); activarMicrofono(); }
+    });
 
     function setLang(lang, btn) {
+      if(estaBloqueado) return;
       currentLang = lang;
       recognition.lang = lang;
       document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
@@ -156,28 +175,35 @@
     }
 
     function updateStatus() { status.innerText = translations[currentLang].ready + db.length + " pallets"; }
-
-    function resetUI() { input.value = ''; lista.innerHTML = ''; }
+    function resetUI() { if(!estaBloqueado) { input.value = ''; lista.innerHTML = ''; listaCoindicenciasActuales = []; } }
 
     function buscar() {
+      if(estaBloqueado) return;
       const val = input.value;
       if (val.length === 4) {
         btnMic.classList.remove('mic-active');
-        const coincidencias = db.filter(row => row.full.endsWith(val));
+        listaCoindicenciasActuales = db.filter(row => row.full.endsWith(val));
         lista.innerHTML = "";
         
-        if (coincidencias.length > 0) {
-          coincidencias.forEach((item, index) => {
+        if (listaCoindicenciasActuales.length > 0) {
+          listaCoindicenciasActuales.forEach((item, index) => {
             const colorClass = `color-${index % 4}`; 
+            
+            // Si ya estaba completo en la base de datos, le ponemos el diseño verde directo
+            const esCompleto = item.actual >= item.cant;
+            const extraClase = esCompleto ? 'card-success' : colorClass;
+
             lista.innerHTML += `
-              <div class="card ${colorClass}">
-                <div style="font-size: 13px; opacity: 0.8;">${item.full} (${item.cant})</div>
+              <div class="card ${extraClase}" id="card-${item.idFila}" onclick="confirmarCaja(${item.idFila})">
+                <div style="font-size: 13px; opacity: 0.8;">${item.full}</div>
                 <div class="card-value">${item.val}</div>
+                <div class="progress-txt" id="progreso-${item.idFila}">${item.actual} / ${item.cant}</div>
                 <div class="extra-field">${item.extra}</div>
               </div>`;
           });
-          if (coincidencias.length > 1) hablar(translations[currentLang].multiple);
-          else hablar(coincidencias[0].val);
+          
+          if (listaCoindicenciasActuales.length > 1) hablar(translations[currentLang].multiple);
+          else hablar(listaCoindicenciasActuales[0].val);
           input.blur();
         } else {
           lista.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-value" style="color:#ef4444; font-size:30px;">${translations[currentLang].notFound}</div></div>`;
@@ -186,9 +212,75 @@
       }
     }
 
-    function hablar(m) {
+    function confirmarCaja(idFila) {
+      if(estaBloqueado) return;
+      
+      // Encontrar el item en nuestra memoria local
+      const item = db.find(row => row.idFila === idFila);
+      if (!item) return;
+
+      if (item.actual >= item.cant) {
+        hablar(translations[currentLang].complete);
+        return; // Ya estaba completo
+      }
+
+      // 1. Suma inmediata en la pantalla para velocidad
+      item.actual += 1;
+      const elementoProgreso = document.getElementById(`progreso-${idFila}`);
+      if(elementoProgreso) elementoProgreso.innerText = `${item.actual} / ${item.cant}`;
+
+      // 2. Comprobar si con esta caja se completó
+      if (item.actual >= item.cant) {
+        estaBloqueado = true; // Bloqueamos la interfaz para la alerta
+        const tarjeta = document.getElementById(`card-${idFila}`);
+        if(tarjeta) tarjeta.className = "card card-success"; // Volverla verde brillante
+        
+        // Sonido de éxito corto y hablar "Completado"
+        ejecutarTonoExito();
+        hablar(translations[currentLang].complete);
+
+        // ESPERAR EXACTAMENTE 3 SEGUNDOS Y LIMPIAR
+        setTimeout(() => {
+          estaBloqueado = false;
+          resetUI();
+        }, 3000);
+
+      } else {
+        // Si no se ha completado, dice el número actual y limpia de inmediato
+        hablar(item.actual.toString());
+        resetUI();
+      }
+
+      // 3. Enviar la actualización a Google Sheets en segundo plano (asíncrono)
+      fetch(API_URL, {
+        method: "POST",
+        mode: "no-cors", // Evita problemas de política CORS con Google Apps Script
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idFila: item.idFila, cant: item.cant })
+      }).then(() => {
+        console.log("Sheets actualizado en segundo plano para fila: " + idFila);
+      }).catch(err => console.error("Error al reportar a Sheets:", err));
+    }
+
+    function ejecutarTonoExito() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // Nota D5
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); // Nota A5 (Tono alegre)
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.25);
+      } catch(e) {}
+    }
+
+    function hablar(mensaje) {
       window.speechSynthesis.cancel();
-      const msg = new SpeechSynthesisUtterance(m);
+      const msg = new SpeechSynthesisUtterance(mensaje);
       msg.lang = currentLang;
       msg.pitch = 0.8;
       setTimeout(() => window.speechSynthesis.speak(msg), 50);

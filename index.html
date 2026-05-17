@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Buscador Pro CS - Modo Transaccional</title>
+  <title>Buscador Pro CS - Sincronización Directa</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -52,6 +52,9 @@
 
     .card-success { background-color: #166534 !important; border-color: #22c55e !important; color: white !important; }
     .card-success .card-value, .card-success .extra-field, .card-success .progress-txt { color: white !important; }
+
+    /* Efecto visual de espera mientras el servidor procesa el conteo real */
+    .card-loading { opacity: 0.5; pointer-events: none; }
 
     .card-value { font-size: 85px; font-weight: 900; line-height: 1; margin: 5px 0; }
     .progress-txt { font-size: 26px; font-weight: 800; margin: 10px 0; color: var(--text-main); }
@@ -224,40 +227,62 @@
         return;
       }
 
-      // Suma local inmediata
-      item.actual += 1;
+      // Bloqueamos la tarjeta momentáneamente para evitar doble clic rápido accidental
+      const tarjeta = document.getElementById(`card-${idIndexColumnaT}`);
+      if (tarjeta) tarjeta.classList.add('card-loading');
 
-      const elementoProgreso = document.getElementById(`progreso-${idIndexColumnaT}`);
-      if (elementoProgreso) elementoProgreso.innerText = `${item.actual} / ${item.cant}`;
+      // Forzamos un audio silencioso preventivo para mantener el canal abierto en iOS/Android
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
 
-      if (item.actual >= item.cant) {
-        estaBloqueado = true; 
-        const tarjeta = document.getElementById(`card-${idIndexColumnaT}`);
-        if (tarjeta) tarjeta.className = "card card-success"; 
-        
-        ejecutarTonoExito();
-        
-        const fraseCompleta = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
-        hablar(fraseCompleta + ". " + translations[currentLang].complete);
-
-        setTimeout(() => {
-          estaBloqueado = false;
-          resetUI();
-        }, 3000);
-
-      } else {
-        const fraseProgreso = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
-        hablar(fraseProgreso);
-        resetUI(); 
-      }
-
-      // El POST ahora simplemente añade un renglón nuevo a la pestaña 'conteo'
+      // PETICIÓN AL SERVIDOR: El Sheets calculará el valor real definitivo de la celda
       fetch(API_URL, {
         method: "POST",
-        mode: "no-cors", 
         headers: { "Content-Type": "text/plain" }, 
         body: JSON.stringify({ idFila: item.idFila })
-      }).catch(err => console.error("Error asíncrono:", err));
+      })
+      .then(res => res.json())
+      .then(resultado => {
+        if (tarjeta) tarjeta.classList.remove('card-loading');
+
+        if (resultado.success) {
+          // Reemplazamos la base de datos interna con los números frescos del servidor
+          db = resultado.db;
+          updateStatus();
+
+          const conteoFinalServidor = resultado.conteoReal;
+          const totalFinalServidor = resultado.cantTotal;
+
+          // Actualizamos la interfaz visual con la verdad del Excel
+          const elementoProgreso = document.getElementById(`progreso-${idIndexColumnaT}`);
+          if (elementoProgreso) elementoProgreso.innerText = `${conteoFinalServidor} / ${totalFinalServidor}`;
+
+          // ¿Se completó la orden en el Excel?
+          if (conteoFinalServidor >= totalFinalServidor) {
+            estaBloqueado = true;
+            if (tarjeta) tarjeta.className = "card card-success";
+            
+            ejecutarTonoExito();
+            
+            const fraseCompleta = conteoFinalServidor.toString() + translations[currentLang].connector + totalFinalServidor.toString();
+            hablar(fraseCompleta + ". " + translations[currentLang].complete);
+
+            setTimeout(() => {
+              estaBloqueado = false;
+              resetUI();
+            }, 3000);
+
+          } else {
+            // El servidor responde rápido, cantamos la cifra oficial e inmunizada
+            const fraseProgreso = conteoFinalServidor.toString() + translations[currentLang].connector + totalFinalServidor.toString();
+            hablar(fraseProgreso);
+            resetUI(); 
+          }
+        }
+      })
+      .catch(err => {
+        if (tarjeta) tarjeta.classList.remove('card-loading');
+        console.error("Error de sincronización de red:", err);
+      });
     }
 
     function ejecutarTonoExito() {

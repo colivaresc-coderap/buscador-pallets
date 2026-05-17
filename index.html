@@ -112,6 +112,7 @@
     recognition.onstart = () => { if(!estaBloqueado) btnMic.classList.add('mic-active'); };
     recognition.onend = () => { btnMic.classList.remove('mic-active'); };
     
+    // AQUÍ CORREGÍ EL ERROR DE DEDO (Cambiado textoRaw por texto)
     recognition.onresult = (e) => {
       if(estaBloqueado) return;
       const texto = e.results[0][0].transcript.toUpperCase();
@@ -197,7 +198,6 @@
               </div>`;
           });
           
-          // La voz se ejecuta inmediatamente aquí, libre de bloqueos
           if (listaCoindicenciasActuales.length > 1) hablar(translations[currentLang].multiple);
           else hablar(listaCoindicenciasActuales[0].val);
           

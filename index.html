@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Buscador Pro CS - Edición Conteo</title>
+  <title>Buscador Pro CS - Modo Transaccional</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -73,7 +73,7 @@
 
   <button id="btnMic">🎤</button>
   
-  <div class="label-ui" id="ui-label">Enter last 4 digits .. </div>
+  <div class="label-ui" id="ui-label">Enter last 4 digits</div>
   <input type="tel" id="inputNum" maxlength="4" placeholder="----" oninput="buscar()" onclick="resetUI()">
 
   <div id="listaResultados"></div>
@@ -224,13 +224,12 @@
         return;
       }
 
-      // Suma local inmediata para respuesta instantánea (0 milisegundos)
+      // Suma local inmediata
       item.actual += 1;
 
       const elementoProgreso = document.getElementById(`progreso-${idIndexColumnaT}`);
       if (elementoProgreso) elementoProgreso.innerText = `${item.actual} / ${item.cant}`;
 
-      // ¿Completó la totalidad de las unidades del pallet?
       if (item.actual >= item.cant) {
         estaBloqueado = true; 
         const tarjeta = document.getElementById(`card-${idIndexColumnaT}`);
@@ -247,18 +246,17 @@
         }, 3000);
 
       } else {
-        // Ejecución de voz directa ligada al dedo/agite para evadir las restricciones móviles
         const fraseProgreso = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
         hablar(fraseProgreso);
         resetUI(); 
       }
 
-      // Sincronización en segundo plano sin frenar al operario
+      // El POST ahora simplemente añade un renglón nuevo a la pestaña 'conteo'
       fetch(API_URL, {
         method: "POST",
         mode: "no-cors", 
         headers: { "Content-Type": "text/plain" }, 
-        body: JSON.stringify({ idFila: item.idFila, cant: item.cant })
+        body: JSON.stringify({ idFila: item.idFila })
       }).catch(err => console.error("Error asíncrono:", err));
     }
 

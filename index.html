@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Buscador Pro CS</title>
+  <title>Buscador Pro CS - Versión Estable</title>
   <style>
     :root {
       --bg-dark: #09090b; --bg-panel: #18181b; --accent: #22c55e;
@@ -42,22 +42,19 @@
     }
 
     #listaResultados { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 15px; }
-    .card { background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); padding: 25px; text-align: center; cursor: pointer; transition: background-color 0.3s, transform 0.1s; }
-    .card:active { transform: scale(0.98); }
+    .card { background-color: var(--bg-panel); border-radius: 20px; border: 2px solid var(--border); padding: 25px; text-align: center; animation: slideUp 0.2s ease; }
     
     .color-0 { border-color: var(--accent); } 
     .color-1 { border-color: #facc15; color: #facc15; } 
     .color-2 { border-color: #3b82f6; color: #3b82f6; } 
     .color-3 { border-color: #ef4444; color: #ef4444; } 
 
-    .card-success { background-color: #166534 !important; border-color: #22c55e !important; color: white !important; }
-    .card-success .card-value, .card-success .extra-field, .card-success .progress-txt { color: white !important; }
-
     .card-value { font-size: 85px; font-weight: 900; line-height: 1; margin: 5px 0; }
-    .progress-txt { font-size: 26px; font-weight: 800; margin: 10px 0; color: var(--text-main); }
-    .extra-field { font-size: 20px; font-weight: bold; opacity: 0.9; }
+    .extra-field { font-size: 24px; font-weight: bold; opacity: 0.9; }
     #status { font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center; }
     #btnSensor { display: none; background: #3b82f6; color: white; border: none; padding: 10px; border-radius: 8px; font-size: 10px; margin-bottom: 15px; width: 100%; max-width: 360px; }
+
+    @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; } }
   </style>
 </head>
 <body>
@@ -83,12 +80,10 @@
     let db = [];
     let currentLang = 'en-US';
     let lastShake = 0;
-    let listaCoindicenciasActuales = [];
-    let estaBloqueado = false;
     
     const translations = {
-      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple!', complete: 'Order Complete', connector: ' of ' },
-      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios!', complete: 'Completado', connector: ' de ' }
+      'en-US': { label: 'Enter last 4 digits', ready: 'Ready: ', notFound: 'Not Found', multiple: 'Multiple found!' },
+      'es-MX': { label: 'Digitar 4 últimos', ready: 'Listo: ', notFound: 'No Encontrado', multiple: '¡Varios encontrados!' }
     };
 
     const input = document.getElementById("inputNum");
@@ -109,13 +104,12 @@
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
 
-    recognition.onstart = () => { if(!estaBloqueado) btnMic.classList.add('mic-active'); };
+    recognition.onstart = () => { btnMic.classList.add('mic-active'); };
     recognition.onend = () => { btnMic.classList.remove('mic-active'); };
     
     recognition.onresult = (e) => {
-      if(estaBloqueado) return;
       const texto = e.results[0][0].transcript.toUpperCase();
-      if (texto.includes("AGA") || texto.includes("AGX")) return;
+      if (texto.includes("AGA") || textoRaw.includes("AGX")) return;
 
       const num = texto.replace(/\D/g, "").slice(-4);
       if (num && num.length === 4) { 
@@ -125,7 +119,7 @@
     };
 
     function activarMicrofono() {
-      if(estaBloqueado) return;
+      // Pequeño pre-despertar de audio solo en clic manual
       window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
       try { recognition.start(); } catch(e) { recognition.stop(); }
     }
@@ -142,27 +136,16 @@
     }
 
     function handleMotion(e) {
-      if(estaBloqueado) return;
       let acc = e.accelerationIncludingGravity;
       if (Math.abs(acc.x) > 15 || Math.abs(acc.y) > 15) {
         let now = Date.now();
-        if (now - lastShake > 2000) { 
-          lastShake = now; 
-          if(listaCoindicenciasActuales.length === 1) {
-            confirmarCaja(listaCoindicenciasActuales[0].idFila);
-          } else {
-            activarMicrofono(); 
-          }
-        }
+        if (now - lastShake > 2000) { lastShake = now; activarMicrofono(); }
       }
     }
 
-    document.addEventListener('keydown', (e) => { 
-      if (e.key === "F4") { e.preventDefault(); activarMicrofono(); }
-    });
+    document.addEventListener('keydown', (e) => { if (e.key === "F4") { e.preventDefault(); activarMicrofono(); }});
 
     function setLang(lang, btn) {
-      if(estaBloqueado) return;
       currentLang = lang;
       recognition.lang = lang;
       document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
@@ -173,114 +156,39 @@
     }
 
     function updateStatus() { status.innerText = translations[currentLang].ready + db.length + " pallets"; }
-    function resetUI() { if(!estaBloqueado) { input.value = ''; lista.innerHTML = ''; listaCoindicenciasActuales = []; } }
+
+    function resetUI() { input.value = ''; lista.innerHTML = ''; }
 
     function buscar() {
       const val = input.value;
       if (val.length === 4) {
         btnMic.classList.remove('mic-active');
-        listaCoindicenciasActuales = db.filter(row => row.full.endsWith(val));
+        const coincidencias = db.filter(row => row.full.endsWith(val));
         lista.innerHTML = "";
         
-        if (listaCoindicenciasActuales.length > 0) {
-          listaCoindicenciasActuales.forEach((item, index) => {
+        if (coincidencias.length > 0) {
+          coincidencias.forEach((item, index) => {
             const colorClass = `color-${index % 4}`; 
-            const esCompleto = item.actual >= item.cant;
-            const extraClase = esCompleto ? 'card-success' : colorClass;
-
             lista.innerHTML += `
-              <div class="card ${extraClase}" id="card-${item.idFila}" onclick="confirmarCaja(${item.idFila})">
-                <div style="font-size: 13px; opacity: 0.8;">${item.full}</div>
+              <div class="card ${colorClass}">
+                <div style="font-size: 13px; opacity: 0.8;">${item.full} (${item.cant})</div>
                 <div class="card-value">${item.val}</div>
-                <div class="progress-txt" id="progreso-${item.idFila}">${item.actual} / ${item.cant}</div>
                 <div class="extra-field">${item.extra}</div>
               </div>`;
           });
-          
-          if (listaCoindicenciasActuales.length > 1) hablar(translations[currentLang].multiple);
-          else hablar(listaCoindicenciasActuales[0].val);
-          
-          if(estaBloqueado) return;
+          if (coincidencias.length > 1) hablar(translations[currentLang].multiple);
+          else hablar(coincidencias[0].val);
           input.blur();
         } else {
-          if(estaBloqueado) return;
           lista.innerHTML = `<div class="card" style="border-color:#ef4444"><div class="card-value" style="color:#ef4444; font-size:30px;">${translations[currentLang].notFound}</div></div>`;
           hablar(translations[currentLang].notFound);
         }
       }
     }
 
-    function confirmarCaja(idIndexColumnaT) {
-      if(estaBloqueado) return;
-      
-      const item = db.find(row => row.idFila === idIndexColumnaT);
-      if (!item) return;
-
-      if (item.actual >= item.cant) {
-        hablar(translations[currentLang].complete);
-        return;
-      }
-
-      // OPCON 2 SEPARAR LA VOZ: Sumamos el número en la memoria local inmediatamente
-      item.actual += 1;
-
-      // Actualizamos la pantalla de forma instantánea
-      const elementoProgreso = document.getElementById(`progreso-${idIndexColumnaT}`);
-      if(elementoProgreso) elementoProgreso.innerText = `${item.actual} / ${item.cant}`;
-
-      // ¿Con esta suma local se completó el pallet?
-      if (item.actual >= item.cant) {
-        estaBloqueado = true; // Bloqueamos la pantalla para congelar la alerta verde
-        const tarjeta = document.getElementById(`card-${idIndexColumnaT}`);
-        if(tarjeta) tarjeta.className = "card card-success"; 
-        
-        ejecutarTonoExito();
-        
-        const fraseCompleta = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
-        hablar(fraseCompleta + ". " + translations[currentLang].complete);
-
-        setTimeout(() => {
-          estaBloqueado = false;
-          resetUI();
-        }, 3000);
-
-      } else {
-        // SI NO SE COMPLETÓ: Genera la frase y habla AL INSTANTE (hilo directo del dedo, sin red)
-        const fraseProgreso = item.actual.toString() + translations[currentLang].connector + item.cant.toString();
-        hablar(fraseProgreso);
-        resetUI(); // Limpieza rápida automática
-      }
-
-      // LA RED TRABAJA EN SEGUNDO PLANO: Enviamos los datos asíncronamente
-      fetch(API_URL, {
-        method: "POST",
-        mode: "no-cors", // Elimina esperas innecesarias de CORS para máxima velocidad de red
-        headers: { "Content-Type": "text/plain" }, 
-        body: JSON.stringify({ idFila: item.idFila, cant: item.cant })
-      }).then(() => {
-        console.log("Sheets actualizado en segundo plano de manera silenciosa.");
-      }).catch(err => console.error("Error de segundo plano:", err));
-    }
-
-    function ejecutarTonoExito() {
-      try {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioCtx.createOscillator();
-        const gainNode = audioCtx.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); 
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime + 0.1); 
-        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.25);
-      } catch(e) {}
-    }
-
-    function hablar(mensaje) {
+    function hablar(m) {
       window.speechSynthesis.cancel();
-      const msg = new SpeechSynthesisUtterance(mensaje);
+      const msg = new SpeechSynthesisUtterance(m);
       msg.lang = currentLang;
       msg.pitch = 0.8;
       setTimeout(() => window.speechSynthesis.speak(msg), 50);

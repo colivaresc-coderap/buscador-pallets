@@ -149,7 +149,7 @@
     function handleMotion(e) {
       if (estaBloqueado) return;
       let acc = e.accelerationIncludingGravity;
-      if (Math.abs(acc.x) > 15 || Math.abs(acc.y) > 15) {
+      if (Math.abs(acc.x) > 25 || Math.abs(acc.y) > 25) {
         let now = Date.now();
         if (now - lastShake > 2000) { 
           lastShake = now; 

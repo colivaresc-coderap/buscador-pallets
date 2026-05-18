@@ -137,7 +137,7 @@
     // REGRESADO: Al agitar, si hay algo en pantalla se limpia; si está vacío, prende el micro
     function handleMotion(e) {
       let acc = e.accelerationIncludingGravity;
-      if (Math.abs(acc.x) > 20 || Math.abs(acc.y) > 20) {
+      if (Math.abs(acc.x) > 15 || Math.abs(acc.y) > 15) {
         let now = Date.now();
         if (now - lastShake > 2000) { 
           lastShake = now; 
